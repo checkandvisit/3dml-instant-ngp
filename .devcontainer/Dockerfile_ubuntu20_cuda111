@@ -1,0 +1,140 @@
+# syntax=docker/dockerfile:1.3
+
+# Other version not tested yet
+ARG CUDA_VERSION=11.1
+ARG UBUNTU_VERSION=20.04
+
+FROM nvidia/cudagl:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+
+# Fix Cuda Path
+ENV CUDA_ROOT /usr/local/cuda
+ENV PATH $PATH:$CUDA_ROOT/bin
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:$CUDA_ROOT/lib64:$CUDA_ROOT/lib:/usr/local/nvidia/lib64:/usr/local/nvidia/lib
+ENV LIBRARY_PATH /usr/local/nvidia/lib64:/usr/local/nvidia/lib:/usr/local/cuda/lib64/stubs:/usr/local/cuda/lib64:/usr/local/cuda/lib$LIBRARY_PATH
+
+# basic packages
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get -y update                && \
+    apt-get -y upgrade               && \
+    apt-get install -y                  \
+    software-properties-common      \
+    sudo                            \
+    cmake                           \
+    build-essential                 \
+    wget                            \
+    curl                            \
+    git                             \
+    swig
+
+#-------------------------------------------------------------
+#       Python Installation
+#-------------------------------------------------------------
+ARG PYTHON_VERSION=3.9
+RUN add-apt-repository ppa:deadsnakes/ppa       && \
+    apt-get -y update                           && \
+    apt-get install -y                             \
+    python${PYTHON_VERSION}                        \
+    python${PYTHON_VERSION}-dev                    \
+    libpython${PYTHON_VERSION}-dev                 \
+    python${PYTHON_VERSION}-tk                     \
+    python${PYTHON_VERSION}-distutils              \
+    python3-setuptools                             \
+    python3-wheel
+
+ENV DEPENDENCIES="/dependencies"
+WORKDIR ${DEPENDENCIES}
+
+#-------------------------------------------------------------
+#       C++
+#-------------------------------------------------------------
+
+# CMAKE
+RUN apt purge -y --auto-remove cmake && \
+    wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null && \
+    apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' && \
+    apt-get update && \
+    apt-get install -y cmake
+
+# C++ 20
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
+    apt update && \
+    apt-get install -y gcc-9 g++-9 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-9 && \
+    update-alternatives --config gcc
+
+#----------------------------------------------
+# Pip binding
+#----------------------------------------------
+
+# Install pip
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+    python${PYTHON_VERSION} get-pip.py
+
+# Force python${PYTHON_VERSION} instead python3.6
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1
+
+#----------------------------------------------
+# Dependencies packages
+#----------------------------------------------
+
+RUN apt-get -y update &&       \
+    apt-get -y install         \
+    libopenexr-dev             \
+    libxi-dev                  \
+    libglfw3-dev               \
+    libglew-dev                \
+    libomp-dev                 \
+    libxinerama-dev            \
+    libxcursor-dev             \
+    zlib1g-dev
+
+RUN apt-get -y update &&       \
+    apt-get -y install         \
+    awscli                     \
+    nano                       \
+    ffmpeg
+
+#-------------------------------------------------------------
+#       Instang-NGP Installation
+#-------------------------------------------------------------
+
+ENV WORKSPACE="/workspaces"
+ENV INSTANT_NGP_PATH="${TOOLS_PATH}/3dml-instant-ngp"
+WORKDIR ${INSTANT_NGP_PATH}
+
+COPY requirements.txt .
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+
+COPY . .
+
+ARG CPU_SIZE=4
+# ENV TCNN_CUDA_ARCHITECTURES=75
+# RUN cmake . -B build && \
+#     cmake --build build --config RelWithDebInfo -j $CPU_SIZE
+
+# #-------------------------------------------------------------
+# #       Post Processing
+# #-------------------------------------------------------------
+
+# ## Switch to non-root user
+# ENV USER=dock
+# ENV GROUP=sudo
+
+# RUN useradd -ms /bin/bash ${USER} && \
+#     usermod -aG ${GROUP} ${USER}
+
+# # Cleaning Part
+# USER root
+# RUN apt-get autoremove -y && \
+#     apt-get autoclean -y && \
+#     rm -rf /var/lib/apt/lists/*
+
+# # Resolve authorization problem
+# RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" \
+#     >/etc/sudoers.d/${USER} && \
+#     chmod 0440 /etc/sudoers.d/${USER}
+
+# # Final User
+# USER ${USER}
