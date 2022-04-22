@@ -1,0 +1,21 @@
+{
+    "cmake.ctestArgs": [
+        "--verbose"
+    ],
+    "cmake.parallelJobs": 4,
+    "files.associations": {
+        "Dockerfile_deps": "dockerfile",
+        "*.sfm": "json",
+        "log": "log",
+        "Dockerfile_ubuntu20_cuda111": "dockerfile",
+        "vector": "cpp",
+        "limits": "cpp"
+    },
+    "doxdocgen.file.copyrightTag": [
+        "@copyright Check&Visit (c) {year}"
+    ],
+    "editor.detectIndentation": false,
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "C_Cpp.errorSquiggles": "Disabled"
+}
