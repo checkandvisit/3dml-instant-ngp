@@ -3,8 +3,9 @@
 # Other version not tested yet
 ARG CUDA_VERSION=11.1
 ARG UBUNTU_VERSION=20.04
+ARG APP_ENV="dev"
 
-FROM nvidia/cudagl:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+FROM nvidia/cudagl:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} as install
 
 # Fix Cuda Path
 ENV CUDA_ROOT /usr/local/cuda
@@ -88,18 +89,11 @@ RUN apt-get -y update &&       \
     libxcursor-dev             \
     zlib1g-dev
 
-RUN apt-get -y update &&       \
-    apt-get -y install         \
-    awscli                     \
-    nano                       \
-    ffmpeg
-
 #-------------------------------------------------------------
 #       Instang-NGP Installation
 #-------------------------------------------------------------
 
-ENV WORKSPACE="/workspaces"
-ENV INSTANT_NGP_PATH="${TOOLS_PATH}/3dml-instant-ngp"
+ENV INSTANT_NGP_PATH="/workspaces/3dml-instant-ngp"
 WORKDIR ${INSTANT_NGP_PATH}
 
 COPY requirements.txt .
@@ -107,34 +101,43 @@ COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
+
+FROM install as dev-instant-ngp
+
+RUN apt-get -y update &&       \
+    apt-get -y install         \
+    awscli                     \
+    nano                       \
+    ffmpeg                     \
+    unzip
+
+FROM install as build-instant-ngp
+
 COPY . .
 
 ARG CPU_SIZE=4
-# ENV TCNN_CUDA_ARCHITECTURES=75
-# RUN cmake . -B build && \
-#     cmake --build build --config RelWithDebInfo -j $CPU_SIZE
+RUN cmake . -B build && \
+    cmake --build build --config RelWithDebInfo -j${CPU_SIZE}
 
-# #-------------------------------------------------------------
-# #       Post Processing
-# #-------------------------------------------------------------
+FROM ${APP_ENV}-instant-ngp as final
 
-# ## Switch to non-root user
-# ENV USER=dock
-# ENV GROUP=sudo
+## Switch to non-root user
+ENV USER=dock
+ENV GROUP=sudo
 
-# RUN useradd -ms /bin/bash ${USER} && \
-#     usermod -aG ${GROUP} ${USER}
+RUN useradd -ms /bin/bash ${USER} && \
+    usermod -aG ${GROUP} ${USER}
 
-# # Cleaning Part
-# USER root
-# RUN apt-get autoremove -y && \
-#     apt-get autoclean -y && \
-#     rm -rf /var/lib/apt/lists/*
+# Cleaning Part
+USER root
+RUN apt-get autoremove -y && \
+    apt-get autoclean -y && \
+    rm -rf /var/lib/apt/lists/*
 
-# # Resolve authorization problem
-# RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" \
-#     >/etc/sudoers.d/${USER} && \
-#     chmod 0440 /etc/sudoers.d/${USER}
+# Resolve authorization problem
+RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" \
+    >/etc/sudoers.d/${USER} && \
+    chmod 0440 /etc/sudoers.d/${USER}
 
-# # Final User
-# USER ${USER}
+# Final User
+USER ${USER}

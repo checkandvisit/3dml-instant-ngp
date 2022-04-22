@@ -262,3 +262,18 @@ Many thanks to the authors of these brilliant projects!
 Copyright © 2022, NVIDIA Corporation. All rights reserved.
 
 This work is made available under the Nvidia Source Code License-NC. Click [here](LICENSE.txt) to view a copy of this license.
+
+## CheckAndVisit
+
+### Build docker
+Version DEV non compilé + dependence-dev
+`docker build -f .devcontainer/Dockerfile_ubuntu20_cuda111 --build-arg APP_ENV=dev -t 3dml-instant-ngp:develop-dev .`
+
+Version Build pre-compilé sans OpenGL, sans deps de dev
+`docker build -f .devcontainer/Dockerfile_ubuntu20_cuda111 --build-arg APP_ENV=build -t 3dml-instant-ngp:develop-build .`
+
+### Environnement de Dev
+- Lancement sous vscode
+- Build du docker
+- Choix du compilateur : `gcc-9.4.0-x86_64-linux-gnu`
+- CMake: RelWithDebInfo au lieu de Debug
