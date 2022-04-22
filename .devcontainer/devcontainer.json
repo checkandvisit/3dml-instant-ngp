@@ -1,23 +1,32 @@
 {
-	"name": "Instant NGP Ubuntu 20.04 Cuda 11.1",
-	"context": "..",
-	"dockerFile": "Dockerfile_ubuntu20_cuda111",
-	"extensions": [
+    "name": "Instant NGP Ubuntu 20.04 Cuda 11.1",
+    "context": "..",
+    "dockerFile": "Dockerfile_ubuntu20_cuda111",
+    "extensions": [
         "ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
         "mutantdino.resourcemonitor",
         "ms-azuretools.vscode-docker",
         "nvidia.nsight-vscode-edition",
-		"ms-python.python",
-		"seatonjiang.gitmoji-vscode"
-	],
-	"runArgs": [
-		"--gpus",
-		"all",
-		"--net=host",
-		"-e", "DISPLAY",
-		"--cap-add", "SYS_PTRACE",
-		"-v", "${localEnv:HOME}/.Xauthority:/root/.Xauthority",
-		"-v", "${localEnv:HOME}/.aws/credentials:/home/dock/.aws/credentials"
-	]
+        "ms-python.python",
+        "seatonjiang.gitmoji-vscode"
+    ],
+    "build": {
+        "args": {
+            "APP_ENV": "dev"
+        }
+    },
+    "runArgs": [
+        "--gpus",
+        "all",
+        "--net=host",
+        "-e",
+        "DISPLAY",
+        "--cap-add",
+        "SYS_PTRACE",
+        "-v",
+        "${localEnv:HOME}/.Xauthority:/root/.Xauthority",
+        "-v",
+        "${localEnv:HOME}/.aws/credentials:/home/dock/.aws/credentials"
+    ]
 }
