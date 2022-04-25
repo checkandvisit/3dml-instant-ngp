@@ -1,92 +1,150 @@
-FROM nvidia/cuda:10.2-devel-ubuntu18.04
+# syntax=docker/dockerfile:1.3
 
-ENV COLMAP_VERSION=3.7
-ENV CMAKE_VERSION=3.21.0
-ENV PYTHON_VERSION=3.7.0
-ENV OPENCV_VERSION=4.5.5.62
-ENV CERES_SOLVER_VERSION=2.0.0
+# Other version not tested yet
+ARG CUDA_VERSION=11.1
+ARG UBUNTU_VERSION=20.04
+ARG APP_ENV="dev"
 
-RUN echo "Installing apt packages..." \
-	&& export DEBIAN_FRONTEND=noninteractive \
-	&& apt -y update --no-install-recommends \
-	&& apt -y install --no-install-recommends \
-	git \
-	wget \
-	ffmpeg \
-	tk-dev \
-	libxi-dev \
-	libc6-dev \
-	libbz2-dev \
-	libffi-dev \
-	libomp-dev \
-	libssl-dev \
-	zlib1g-dev \
-	libcgal-dev \
-	libgdbm-dev \
-	libglew-dev \
-	python3-dev \
-	python3-pip \
-	qtbase5-dev \
-	checkinstall \
-	libglfw3-dev \
-	libeigen3-dev \
-	libgflags-dev \
-	libxrandr-dev \
-	libopenexr-dev \
-	libsqlite3-dev \
-	libxcursor-dev \
-	build-essential \
-	libcgal-qt5-dev \
-	libxinerama-dev \
-	libboost-all-dev \
-	libfreeimage-dev \
-	libncursesw5-dev \
-	libatlas-base-dev \
-	libqt5opengl5-dev \
-	libgoogle-glog-dev \
-	libsuitesparse-dev \
-	python3-setuptools \
-	libreadline-gplv2-dev \
-	&& apt autoremove -y \
-	&& apt clean -y \
-	&& export DEBIAN_FRONTEND=dialog
+FROM nvidia/cudagl:${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION} as install
 
-RUN echo "Installing Python ver. ${PYTHON_VERSION}..." \
-	&& cd /opt \
-	&& wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz \
-	&& tar xzf Python-${PYTHON_VERSION}.tgz \
-	&& cd ./Python-${PYTHON_VERSION} \
-	&& ./configure --enable-optimizations \
-	&& make \
-	&& checkinstall
+# Fix Cuda Path
+ENV CUDA_ROOT /usr/local/cuda
+ENV PATH $PATH:$CUDA_ROOT/bin
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:$CUDA_ROOT/lib64:$CUDA_ROOT/lib:/usr/local/nvidia/lib64:/usr/local/nvidia/lib
+ENV LIBRARY_PATH /usr/local/nvidia/lib64:/usr/local/nvidia/lib:/usr/local/cuda/lib64/stubs:/usr/local/cuda/lib64:/usr/local/cuda/lib$LIBRARY_PATH
 
-COPY ./requirements.txt ./
+# basic packages
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get -y update                && \
+    apt-get -y upgrade               && \
+    apt-get install -y                  \
+    software-properties-common      \
+    sudo                            \
+    cmake                           \
+    build-essential                 \
+    wget                            \
+    curl                            \
+    git                             \
+    swig
 
-RUN echo "Installing pip packages..." \
-	&& python3 -m pip install -U pip \
-	&& pip3 --no-cache-dir install -r ./requirements.txt \
-	&& pip3 --no-cache-dir install cmake==${CMAKE_VERSION} opencv-python==${OPENCV_VERSION} \
-	&& rm ./requirements.txt
+#-------------------------------------------------------------
+#       Python Installation
+#-------------------------------------------------------------
+ARG PYTHON_VERSION=3.9
+RUN add-apt-repository ppa:deadsnakes/ppa       && \
+    apt-get -y update                           && \
+    apt-get install -y                             \
+    python${PYTHON_VERSION}                        \
+    python${PYTHON_VERSION}-dev                    \
+    libpython${PYTHON_VERSION}-dev                 \
+    python${PYTHON_VERSION}-tk                     \
+    python${PYTHON_VERSION}-distutils              \
+    python3-setuptools                             \
+    python3-wheel
 
-RUN echo "Installing Ceres Solver ver. ${CERES_SOLVER_VERSION}..." \
-	&& cd /opt \
-	&& git clone https://github.com/ceres-solver/ceres-solver \
-	&& cd ./ceres-solver \
-	&& git checkout ${CERES_SOLVER_VERSION} \
-	&& mkdir ./build \
-	&& cd ./build \
-	&& cmake ../ -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF \
-	&& make -j \
-	&& make install
+ENV DEPENDENCIES="/dependencies"
+WORKDIR ${DEPENDENCIES}
 
-RUN echo "Installing COLMAP ver. ${COLMAP_VERSION}..." \
-	&& cd /opt \
-	&& git clone https://github.com/colmap/colmap \
-	&& cd ./colmap \
-	&& git checkout ${COLMAP_VERSION} \
-	&& mkdir ./build \
-	&& cd ./build \
-	&& cmake ../ \
-	&& make -j \
-	&& make install \
-	&& colmap -h
+#-------------------------------------------------------------
+#       C++
+#-------------------------------------------------------------
+
+# CMAKE
+RUN apt purge -y --auto-remove cmake && \
+    wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null && \
+    apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' && \
+    apt-get update && \
+    apt-get install -y cmake
+
+# C++ 20
+RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
+    apt update && \
+    apt-get install -y gcc-9 g++-9 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-9 && \
+    update-alternatives --config gcc
+
+#----------------------------------------------
+# Pip binding
+#----------------------------------------------
+
+# Install pip
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+    python${PYTHON_VERSION} get-pip.py
+
+# Force python${PYTHON_VERSION} instead python3.6
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1
+
+#----------------------------------------------
+# Dependencies packages
+#----------------------------------------------
+
+RUN apt-get -y update &&       \
+    apt-get -y install         \
+    libopenexr-dev             \
+    libxi-dev                  \
+    libglfw3-dev               \
+    libglew-dev                \
+    libomp-dev                 \
+    libxinerama-dev            \
+    libxcursor-dev             \
+    zlib1g-dev
+
+#-------------------------------------------------------------
+#       Instang-NGP Installation
+#-------------------------------------------------------------
+
+ENV INSTANT_NGP_PATH="/workspaces/3dml-instant-ngp"
+WORKDIR ${INSTANT_NGP_PATH}
+
+COPY .devcontainer/requirements.txt .devcontainer/
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r .devcontainer/requirements.txt
+
+
+FROM install as dev-instant-ngp
+
+RUN apt-get -y update &&       \
+    apt-get -y install         \
+    awscli                     \
+    nano                       \
+    ffmpeg                     \
+    unzip
+
+COPY .devcontainer/requirements_dev.txt .devcontainer/
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r .devcontainer/requirements_dev.txt
+
+FROM install as build-instant-ngp
+
+COPY . .
+
+ARG CPU_SIZE=4
+RUN cmake . -B build && \
+    cmake --build build --config RelWithDebInfo -j${CPU_SIZE}
+
+FROM ${APP_ENV}-instant-ngp as final
+
+ENV PYTHONPATH=$PYTHONPATH:"/workspaces/3dml-instant-ngp/build/"
+
+## Switch to non-root user
+ENV USER=dock
+ENV GROUP=sudo
+
+RUN useradd -ms /bin/bash ${USER} && \
+    usermod -aG ${GROUP} ${USER}
+
+# Cleaning Part
+USER root
+RUN apt-get autoremove -y && \
+    apt-get autoclean -y && \
+    rm -rf /var/lib/apt/lists/*
+
+# Resolve authorization problem
+RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" \
+    >/etc/sudoers.d/${USER} && \
+    chmod 0440 /etc/sudoers.d/${USER}
+
+# Final User
+USER ${USER}

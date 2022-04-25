@@ -1,11 +1,10 @@
 {
-    "name": "Instant NGP Ubuntu 20.04 Cuda 11.1",
+    "name": "Instant NGP",
     "context": "..",
-    "dockerFile": "Dockerfile_ubuntu20_cuda111",
+    "dockerFile": "Dockerfile",
     "extensions": [
         "ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
-        "mutantdino.resourcemonitor",
         "ms-azuretools.vscode-docker",
         "nvidia.nsight-vscode-edition",
         "ms-python.python",
