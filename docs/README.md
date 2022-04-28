@@ -266,10 +266,10 @@ This work is made available under the Nvidia Source Code License-NC. Click [here
 ## CheckAndVisit
 
 ### Build docker
-Version DEV non compilé + dependence-dev
+Version DEV non compilée + dependence-dev
 `docker build -f .devcontainer/Dockerfile_ubuntu20_cuda111 --build-arg APP_ENV=dev -t 3dml-instant-ngp:develop-dev .`
 
-Version Build pre-compilé sans OpenGL, sans deps de dev
+Version Build pre-compilée sans OpenGL, sans deps de dev
 `docker build -f .devcontainer/Dockerfile_ubuntu20_cuda111 --build-arg APP_ENV=build -t 3dml-instant-ngp:develop-build .`
 
 ### Environnement de Dev
