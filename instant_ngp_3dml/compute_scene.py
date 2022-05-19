@@ -19,20 +19,21 @@ from instant_ngp_3dml.utils.tonemapper import tonemap_folder
 
 DEFAULT_MAX_STEP = 20000
 DEBUG = False
-DISABLED_S3_SAVING = False
+ENABLE_S3_DOWNLOAD = False
+ENABLE_S3_UPLOAD = False
 
 
 class SceneComputer:
     """Compute Scene with NERF"""
 
     def __init__(self, scene: str, config: str):
+        assert scene in ("barbershop", "lego")
         self.scene_dir = os.path.join(DATA_DIR, scene)
         self.config_path = NERF_CONFIG.format(config=config)
 
         self.result_dir = os.path.join(self.scene_dir, config)
         self.snapshot_dir = os.path.join(self.result_dir, "snapshot")
-        self.snapshot = os.path.join(
-            self.snapshot_dir, "snap_"+"{idx}.msgpack")
+        self.snapshot = os.path.join(self.snapshot_dir, "snap_"+"{idx}.msgpack")
 
         os.makedirs(self.result_dir, exist_ok=True)
 
@@ -169,7 +170,7 @@ def compute_scene(scene: str,
     scene_url = f"s3://checkandvisit-3dml-dev/dataset_test/nerf/{scene}/"
 
     logger.info("Download data")
-    if not DISABLED_S3_SAVING:
+    if ENABLE_S3_DOWNLOAD:
         computer.download_scene(scene_url)
 
     logger.info("Train")
@@ -198,7 +199,7 @@ def compute_scene(scene: str,
     logger.info("Save json result")
     computer.save_info()
 
-    if not DISABLED_S3_SAVING:
+    if ENABLE_S3_UPLOAD:
         logger.info("Upload result")
         computer.upload_scene(scene_url)
 
