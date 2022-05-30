@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Training Script"""
+import time
 import pyngp as ngp  # noqa
 from tqdm import tqdm
 
@@ -30,6 +31,7 @@ def train(scene: str = "", network: str = "", load_snapshot: str = "", save_snap
         n_steps = 100000
 
     if n_steps > 0:
+        tqdm_last_update = 0.0
         with tqdm(desc="Training", total=n_steps, unit="step") as t:
             while testbed.frame():
 
@@ -42,9 +44,12 @@ def train(scene: str = "", network: str = "", load_snapshot: str = "", save_snap
                     old_training_step = 0
                     t.reset()
 
-                t.update(testbed.training_step - old_training_step)
-                t.set_postfix(loss=testbed.loss)
-                old_training_step = testbed.training_step
+                now = time.monotonic()
+                if now - tqdm_last_update > 0.1:
+                    t.update(testbed.training_step - old_training_step)
+                    t.set_postfix(loss=testbed.loss)
+                    old_training_step = testbed.training_step
+                    tqdm_last_update = now
 
     if save_snapshot != "":
         logger.info(f"Saving snapshot {save_snapshot}")
