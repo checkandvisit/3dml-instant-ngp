@@ -41,7 +41,8 @@ def render(load_snapshot: str,
            height: int = 1080,
            depth: bool = False,
            screenshot_spp: int = 4,
-           display: bool = False):
+           display: bool = False,
+           num_max_images: int = -1):
     """Nerf renderer"""
     # pylint: disable=too-many-arguments
 
@@ -83,7 +84,9 @@ def render(load_snapshot: str,
         testbed.exposure = -4.0
         screenshot_spp = 1
 
-    nb_frames = int(len(ref_transforms["frames"])/100)
+    nb_frames = len(ref_transforms["frames"])
+    if num_max_images > 0:
+        nb_frames = min(num_max_images, nb_frames)
     with tqdm(desc="Rendering", total=nb_frames, unit="frame") as t:
         for idx in range(nb_frames):
             f = ref_transforms["frames"][int(idx)]
@@ -100,15 +103,14 @@ def render(load_snapshot: str,
                 image = testbed.screenshot()
             else:
                 image = testbed.render(sw, sh, screenshot_spp, True)
+                image[..., :3] *= 2**(-1*testbed.exposure)
 
             if depth:
                 # Force depth in numpy format
                 outname = os.path.splitext(outname)[0] + ".npy"
                 os.makedirs(os.path.dirname(outname), exist_ok=True)
-
-                image *= 2**(-1*testbed.exposure)
-
                 np.save(outname, image[..., 0])
+                # No need to correct exposure on depth
 
             else:
                 __save(outname, image)
