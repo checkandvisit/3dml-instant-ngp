@@ -2,8 +2,8 @@
 """Compute NeRF Scene"""
 import os
 from time import process_time
-from typing import Any
-from typing import Dict
+from typing import Any, Literal
+from typing import Dict, get_args
 from typing import Tuple
 
 from instant_ngp_3dml.rendering import render
@@ -19,20 +19,28 @@ from instant_ngp_3dml.utils.tonemapper import tonemap_folder
 
 DEFAULT_MAX_STEP = 20000
 DEBUG = False
-DISABLED_S3_SAVING = False
+ENABLE_S3_UPLOAD = False
+S3_URL_FORMAT = "s3://checkandvisit-3dml-dev/dataset_test/nerf/{scene_name}/"
+
+SceneName = Literal["lego", "barbershop", "0223-1010", "0223-1118", "0223-1120"]
 
 
 class SceneComputer:
-    """Compute Scene with NERF"""
+    """Train and render a test scene with NERF."""
 
-    def __init__(self, scene: str, config: str):
-        self.scene_dir = os.path.join(DATA_DIR, scene)
+    def __init__(self, scene_name: SceneName, config: str):
+        assert scene_name in set(get_args(SceneName)), \
+            f"Unknown test scene name, should be in {set(get_args(SceneName))}"
+        self.scene_dir = os.path.join(DATA_DIR, scene_name)
+        if not os.path.isdir(self.scene_dir):
+            logger.info("Download data from S3")
+            self.download_scene(S3_URL_FORMAT.format(scene_name))
+
         self.config_path = NERF_CONFIG.format(config=config)
 
         self.result_dir = os.path.join(self.scene_dir, config)
         self.snapshot_dir = os.path.join(self.result_dir, "snapshot")
-        self.snapshot = os.path.join(
-            self.snapshot_dir, "snap_"+"{idx}.msgpack")
+        self.snapshot = os.path.join(self.snapshot_dir, "snap_"+"{idx}.msgpack")
 
         os.makedirs(self.result_dir, exist_ok=True)
 
@@ -151,26 +159,21 @@ class SceneComputer:
         return video, depth_video, result_video
 
 
-def compute_scene(scene: str,
+def compute_scene(scene: SceneName,
                   config: str = "base",
                   display: bool = False):
-    """Train NeRF
+    """
+    Train and render a scene with NERF
 
-        Args:
-            scene: Scene Name on S3 bucket
-            config: NeRF Network Configuration
-            display: Display result during rendering
+    Args:
+        scene: Scene Name on S3 bucket
+        config: NeRF Network Configuration
+        display: Display result during rendering
     """
 
     logger.info(f"Run NeRF Scene on {scene}")
     computer = SceneComputer(scene,
                              config)
-
-    scene_url = f"s3://checkandvisit-3dml-dev/dataset_test/nerf/{scene}/"
-
-    logger.info("Download data")
-    if not DISABLED_S3_SAVING:
-        computer.download_scene(scene_url)
 
     logger.info("Train")
     computer.train()
@@ -198,8 +201,8 @@ def compute_scene(scene: str,
     logger.info("Save json result")
     computer.save_info()
 
-    if not DISABLED_S3_SAVING:
+    if ENABLE_S3_UPLOAD:
         logger.info("Upload result")
-        computer.upload_scene(scene_url)
+        computer.upload_scene(S3_URL_FORMAT.format(scene))
 
     export_profiling_events()
