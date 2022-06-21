@@ -46,3 +46,14 @@ python3 -m instant_ngp_3dml compute_scene --scene lego
 ```
 
 In case of a CUDA_ERROR_OUT_OF_MEMORY, just rerun the same command and continue the training using cached results.
+
+### Update master with latest changes from https://github.com/checkandvisit/3dml-instant-ngp
+```sh
+git remote add nvidia https://github.com/NVlabs/instant-ngp.git
+git fetch nvidia
+
+git checkout master
+git pull
+git rebase nvidia/master
+git push --force
+```
