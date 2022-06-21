@@ -76,7 +76,8 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "valarray": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "mprealsupport": "cpp"
     },
     "doxdocgen.file.copyrightTag": [
         "@copyright Check&Visit (c) {year}"
