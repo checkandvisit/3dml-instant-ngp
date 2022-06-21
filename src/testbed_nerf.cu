@@ -1782,7 +1782,8 @@ __global__ void init_rays_with_payload_kernel_nerf(
 	float* __restrict__ depthbuffer,
 	const float* __restrict__ distortion_data,
 	const Vector2i distortion_resolution,
-	ERenderMode render_mode
+	ERenderMode render_mode,
+    ECameraMode camera_mode
 ) {
 	uint32_t x = threadIdx.x + blockDim.x * blockIdx.x;
 	uint32_t y = threadIdx.y + blockDim.y * blockIdx.y;
@@ -1813,6 +1814,7 @@ __global__ void init_rays_with_payload_kernel_nerf(
 		snap_to_pixel_centers,
 		plane_z,
 		dof,
+        camera_mode,
 		camera_distortion,
 		distortion_data,
 		distortion_resolution
@@ -1962,6 +1964,7 @@ void Testbed::NerfTracer::init_rays_from_camera(
 	int show_accel,
 	float cone_angle_constant,
 	ERenderMode render_mode,
+    ECameraMode camera_mode,
 	cudaStream_t stream
 ) {
 	// Make sure we have enough memory reserved to render at the requested resolution
@@ -1992,7 +1995,8 @@ void Testbed::NerfTracer::init_rays_from_camera(
 		depth_buffer,
 		distortion_data,
 		distortion_resolution,
-		render_mode
+		render_mode,
+        camera_mode
 	);
 
 	m_n_rays_initialized = resolution.x() * resolution.y();
@@ -2255,6 +2259,7 @@ void Testbed::render_nerf(CudaRenderBuffer& render_buffer, const Vector2i& max_r
 		m_nerf.show_accel,
 		m_nerf.cone_angle_constant,
 		render_mode,
+        m_camera_mode,
 		stream
 	);
 
