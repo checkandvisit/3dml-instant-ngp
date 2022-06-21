@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Rendering Script"""
 import os
+from typing import Dict
 
 import imageio
 import numpy as np
@@ -11,6 +12,11 @@ from instant_ngp_3dml.utils.io import read_json
 from instant_ngp_3dml.utils.log import logger
 from instant_ngp_3dml.utils.profiler import profile
 from instant_ngp_3dml.utils.tonemapper import linear_to_srgb
+
+
+CAMERA_MODES: Dict[str, ngp.CameraMode] = {"perspective": ngp.CameraMode.Perspective,
+                                           "orthographic": ngp.CameraMode.Orthographic,
+                                           "environment": ngp.CameraMode.Environment}
 
 
 @profile
@@ -42,7 +48,8 @@ def render(load_snapshot: str,
            depth: bool = False,
            screenshot_spp: int = 4,
            display: bool = False,
-           num_max_images: int = -1):
+           num_max_images: int = -1,
+           camera_mode: str = "perspective"):
     """Nerf renderer"""
     # pylint: disable=too-many-arguments
 
@@ -75,6 +82,10 @@ def render(load_snapshot: str,
     testbed.fov = ref_transforms["camera_angle_x"] * 180 / np.pi
     testbed.dynamic_res = False
     testbed.fixed_res_factor = 1
+
+    assert camera_mode.lower() in CAMERA_MODES,\
+        f"Invalid camera mode '{camera_mode}'. Should be in {CAMERA_MODES.keys()}"
+    testbed.camera_mode = CAMERA_MODES[camera_mode.lower()]
 
     if depth:
         logger.info("Set depth rendering params")
