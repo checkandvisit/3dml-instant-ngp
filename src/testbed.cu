@@ -2337,7 +2337,8 @@ __global__ void dlss_prep_kernel(
 	const float prev_view_dist,
 	const Vector2f image_pos,
 	const Vector2f prev_image_pos,
-	const Vector2i image_resolution
+	const Vector2i image_resolution,
+	const ECameraMode camera_mode
 ) {
 	uint32_t x = threadIdx.x + blockDim.x * blockIdx.x;
 	uint32_t y = threadIdx.y + blockDim.y * blockIdx.y;
@@ -2375,6 +2376,7 @@ __global__ void dlss_prep_kernel(
 		parallax_shift,
 		snap_to_pixel_centers,
 		depth,
+		camera_mode,
 		camera_distortion
 	);
 
@@ -2537,7 +2539,8 @@ void Testbed::render_frame(const Matrix<float, 3, 4>& camera_matrix0, const Matr
 			m_prev_scale,
 			m_image.pos,
 			m_image.prev_pos,
-			m_image.resolution
+			m_image.resolution,
+			m_camera_mode
 		);
 
 		render_buffer.set_dlss_sharpening(m_dlss_sharpening);
