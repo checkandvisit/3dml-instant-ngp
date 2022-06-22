@@ -43,6 +43,7 @@ Then, use CMake to build the project:
 Run following command to test Instant-NGP on the Lego dataset
 ```sh
 python3 -m instant_ngp_3dml compute_scene --scene lego
+./build/testbed --scene data/nerf/lego
 ```
 
 In case of a CUDA_ERROR_OUT_OF_MEMORY, just rerun the same command and continue the training using cached results.
