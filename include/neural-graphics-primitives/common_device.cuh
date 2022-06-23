@@ -285,7 +285,7 @@ inline __host__ __device__ Ray pixel_to_ray(
 		};
 		head_pos *= dataset_scale;
 		head_pos += shift;
-   		dir -= shift / parallax_shift.z(); // we could use focus_z here in the denominator. for now, we pack m_scale in here.
+		dir -= shift / parallax_shift.z(); // we could use focus_z here in the denominator. for now, we pack m_scale in here.
 	}
 	else if(camera_mode == ECameraMode::Environment){
 		// Camera convention: XYZ <-> Right Down Front
@@ -321,7 +321,7 @@ inline __host__ __device__ Ray pixel_to_ray(
 			dir.head<2>() += read_image<2>(distortion_data, distortion_resolution, uv);
 		}
 		head_pos += shift;
-   		dir -= shift / parallax_shift.z(); // we could use focus_z here in the denominator. for now, we pack m_scale in here.
+		dir -= shift / parallax_shift.z(); // we could use focus_z here in the denominator. for now, we pack m_scale in here.
 	}
 
 	dir = camera_matrix.block<3, 3>(0, 0) * dir;
