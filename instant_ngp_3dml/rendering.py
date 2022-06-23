@@ -32,7 +32,7 @@ def __save(outname, image):
     image = (np.clip(image, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
     # Some NeRF datasets lack the .png suffix in the dataset metadata
-    if not os.path.splitext(outname)[1]:
+    if os.path.splitext(outname)[1] != ".png":
         outname = outname + ".png"
 
     os.makedirs(os.path.dirname(outname), exist_ok=True)
@@ -43,15 +43,14 @@ def __save(outname, image):
 def render(load_snapshot: str,
            screenshot_transforms: str,
            screenshot_dir: str,
-           width: int = 1920,
-           height: int = 1080,
            depth: bool = False,
            screenshot_spp: int = 4,
            display: bool = False,
            num_max_images: int = -1,
+           downscale_factor: int = 1,
            camera_mode: str = "perspective"):
     """Nerf renderer"""
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-statements
 
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
 
@@ -62,8 +61,8 @@ def render(load_snapshot: str,
     ref_transforms = read_json(screenshot_transforms)
 
     # Pick a sensible GUI resolution depending on arguments.
-    sw = width
-    sh = height
+    sw = int(ref_transforms["w"] / downscale_factor)
+    sh = int(ref_transforms["h"] / downscale_factor)
     while sw*sh > 1920*1080*4:
         sw = int(sw / 2)
         sh = int(sh / 2)
