@@ -85,21 +85,15 @@ class SceneComputer:
         """Render Scene."""
 
         test_json = os.path.join(self.scene_dir, "test.json")
-        test_data = read_json(test_json)
 
         screenshot = os.path.join(
             self.result_dir, "screenshot"+("_depth" if depth else "")+("_gl" if display else ""))
         os.makedirs(screenshot, exist_ok=True)
 
-        width = int(test_data["w"])
-        height = int(test_data["h"])
-
         start_time = process_time()
         render(load_snapshot=self.snapshot.format(idx=step_idx),
                screenshot_transforms=test_json,
                screenshot_dir=screenshot,
-               width=width,
-               height=height,
                depth=depth,
                display=display)
         end_time = process_time()
