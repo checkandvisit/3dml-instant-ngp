@@ -16,6 +16,8 @@ ENV LIBRARY_PATH /usr/local/nvidia/lib64:/usr/local/nvidia/lib:/usr/local/cuda/l
 RUN rm -f /etc/apt/sources.list.d/cuda.list
 RUN rm -f /etc/apt/sources.list.d/nvidia-ml.list
 
+ENV DEPENDENCIES="/dependencies"
+WORKDIR ${DEPENDENCIES}
 
 # basic packages
 ENV DEBIAN_FRONTEND noninteractive
@@ -24,30 +26,11 @@ RUN apt-get -y update                && \
     apt-get install -y                  \
     software-properties-common      \
     sudo                            \
-    cmake                           \
     build-essential                 \
     wget                            \
     curl                            \
     git                             \
     swig
-
-#-------------------------------------------------------------
-#       Python Installation
-#-------------------------------------------------------------
-ARG PYTHON_VERSION=3.9
-RUN add-apt-repository ppa:deadsnakes/ppa       && \
-    apt-get -y update                           && \
-    apt-get install -y                             \
-    python${PYTHON_VERSION}                        \
-    python${PYTHON_VERSION}-dev                    \
-    libpython${PYTHON_VERSION}-dev                 \
-    python${PYTHON_VERSION}-tk                     \
-    python${PYTHON_VERSION}-distutils              \
-    python3-setuptools                             \
-    python3-wheel
-
-ENV DEPENDENCIES="/dependencies"
-WORKDIR ${DEPENDENCIES}
 
 #-------------------------------------------------------------
 #       C++
@@ -67,6 +50,21 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-9 && \
     update-alternatives --config gcc
 
+#-------------------------------------------------------------
+#       Python Installation
+#-------------------------------------------------------------
+ARG PYTHON_VERSION=3.9
+RUN add-apt-repository ppa:deadsnakes/ppa       && \
+    apt-get -y update                           && \
+    apt-get install -y                             \
+    python${PYTHON_VERSION}                        \
+    python${PYTHON_VERSION}-dev                    \
+    libpython${PYTHON_VERSION}-dev                 \
+    python${PYTHON_VERSION}-tk                     \
+    python${PYTHON_VERSION}-distutils              \
+    python3-setuptools                             \
+    python3-wheel
+
 #----------------------------------------------
 # Pip binding
 #----------------------------------------------
@@ -79,7 +77,77 @@ RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1
 
 #----------------------------------------------
-# Dependencies packages
+#   COLMAP Installation
+#----------------------------------------------
+
+RUN echo "Installing apt packages..." \
+    && export DEBIAN_FRONTEND=noninteractive \
+    && apt -y update --no-install-recommends \
+    && apt -y install --no-install-recommends \
+    git \
+    wget \
+    ffmpeg \
+    tk-dev \
+    libxi-dev \
+    libc6-dev \
+    libbz2-dev \
+    libffi-dev \
+    libomp-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libcgal-dev \
+    libgdbm-dev \
+    libglew-dev \
+    qtbase5-dev \
+    checkinstall \
+    libglfw3-dev \
+    libeigen3-dev \
+    libgflags-dev \
+    libxrandr-dev \
+    libopenexr-dev \
+    libsqlite3-dev \
+    libxcursor-dev \
+    libcgal-qt5-dev \
+    libxinerama-dev \
+    libboost-all-dev \
+    libfreeimage-dev \
+    libncursesw5-dev \
+    libatlas-base-dev \
+    libqt5opengl5-dev \
+    libgoogle-glog-dev \
+    libsuitesparse-dev \
+    libreadline-gplv2-dev \
+    && apt autoremove -y \
+    && apt clean -y \
+    && export DEBIAN_FRONTEND=dialog
+
+ARG CERES_SOLVER_VERSION=2.0.0
+RUN echo "Installing Ceres Solver ver. ${CERES_SOLVER_VERSION}..." \
+    && cd /opt \
+    && git clone https://github.com/ceres-solver/ceres-solver \
+    && cd ./ceres-solver \
+    && git checkout ${CERES_SOLVER_VERSION} \
+    && mkdir ./build \
+    && cd ./build \
+    && cmake ../ -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF \
+    && make -j2 \
+    && make install
+
+ARG COLMAP_VERSION=3.7
+RUN echo "Installing COLMAP ver. ${COLMAP_VERSION}..." \
+    && cd /opt \
+    && git clone https://github.com/colmap/colmap \
+    && cd ./colmap \
+    && git checkout ${COLMAP_VERSION} \
+    && mkdir ./build \
+    && cd ./build \
+    && cmake ../ \
+    && make -j2 \
+    && make install \
+    && colmap -h
+
+#----------------------------------------------
+#   Dependencies packages
 #----------------------------------------------
 
 RUN apt-get -y update &&       \
@@ -94,7 +162,7 @@ RUN apt-get -y update &&       \
     zlib1g-dev
 
 #-------------------------------------------------------------
-#       Instang-NGP Installation
+#       Instant-NGP Installation
 #-------------------------------------------------------------
 
 ENV INSTANT_NGP_PATH="/workspaces/3dml-instant-ngp"
@@ -125,6 +193,7 @@ FROM install as build-instant-ngp
 COPY . .
 
 ARG CPU_SIZE=4
+ENV TCNN_CUDA_ARCHITECTURES=75
 RUN cmake . -B build && \
     cmake --build build --config RelWithDebInfo -j${CPU_SIZE}
 

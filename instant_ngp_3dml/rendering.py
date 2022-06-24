@@ -34,7 +34,7 @@ def __save(outname, image):
     image = (np.clip(image, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
 
     # Some NeRF datasets lack the .png suffix in the dataset metadata
-    if not os.path.splitext(outname)[1]:
+    if os.path.splitext(outname)[1] != ".png":
         outname = outname + ".png"
 
     os.makedirs(os.path.dirname(outname), exist_ok=True)
@@ -45,11 +45,10 @@ def __save(outname, image):
 def render(snapshot_msgpack: str,
            transforms_json: str,
            output_dir: str,
-           width: int = 1920,
-           height: int = 1080,
            spp: int = 4,
            display: bool = False,
            num_max_images: int = -1,
+           downscale_factor: float = 1.0,
            render_mode: str = "color",
            camera_mode: str = "perspective") -> str:
     """Nerf renderer"""
@@ -64,8 +63,8 @@ def render(snapshot_msgpack: str,
     ref_transforms = read_json(transforms_json)
 
     # Pick a sensible GUI resolution depending on arguments.
-    sw = width
-    sh = height
+    sw = int(ref_transforms["w"] / downscale_factor)
+    sh = int(ref_transforms["h"] / downscale_factor)
     while sw*sh > 1920*1080*4:
         sw = int(sw / 2)
         sh = int(sh / 2)

@@ -12,7 +12,6 @@ from instant_ngp_3dml.rendering import render
 from instant_ngp_3dml.training import train
 from instant_ngp_3dml.utils import DATA_DIR
 from instant_ngp_3dml.utils import NERF_CONFIG
-from instant_ngp_3dml.utils.io import read_json
 from instant_ngp_3dml.utils.io import write_json
 from instant_ngp_3dml.utils.log import logger
 from instant_ngp_3dml.utils.profiler import export_profiling_events
@@ -112,17 +111,11 @@ class SceneComputer:
         """Render Scene."""
         # pylint:disable=too-many-arguments
         transforms_json = os.path.join(self.scene_dir, "topview.json" if topview else "test.json")
-        transforms_data = read_json(transforms_json)
-
-        width = int(transforms_data["w"])
-        height = int(transforms_data["h"])
 
         start_time = process_time()
         render_folder = render(snapshot_msgpack=get_snapshot_path(self.snapshot_dir, step_idx),
                                transforms_json=transforms_json,
                                output_dir=self.result_dir,
-                               width=width,
-                               height=height,
                                display=display,
                                num_max_images=num_max_images,
                                render_mode=render_mode,
