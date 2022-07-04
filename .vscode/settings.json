@@ -1,0 +1,200 @@
+{
+    "cmake.ctestArgs": [
+        "--verbose"
+    ],
+    "cmake.parallelJobs": 4,
+    "files.associations": {
+        "Dockerfile_deps": "dockerfile",
+        "*.sfm": "json",
+        "log": "log",
+        "Dockerfile_ubuntu20_cuda111": "dockerfile",
+        "vector": "cpp",
+        "limits": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "string_view": "cpp",
+        "ostream": "cpp",
+        "chrono": "cpp",
+        "atomic": "cpp",
+        "bit": "cpp",
+        "*.tcc": "cpp",
+        "bitset": "cpp",
+        "cctype": "cpp",
+        "cfenv": "cpp",
+        "clocale": "cpp",
+        "cmath": "cpp",
+        "codecvt": "cpp",
+        "complex": "cpp",
+        "condition_variable": "cpp",
+        "cstdarg": "cpp",
+        "cstddef": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "cwchar": "cpp",
+        "cwctype": "cpp",
+        "map": "cpp",
+        "set": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "exception": "cpp",
+        "algorithm": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "memory": "cpp",
+        "memory_resource": "cpp",
+        "numeric": "cpp",
+        "optional": "cpp",
+        "random": "cpp",
+        "ratio": "cpp",
+        "regex": "cpp",
+        "string": "cpp",
+        "system_error": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "hash_map": "cpp",
+        "fstream": "cpp",
+        "future": "cpp",
+        "initializer_list": "cpp",
+        "iomanip": "cpp",
+        "iosfwd": "cpp",
+        "iostream": "cpp",
+        "istream": "cpp",
+        "mutex": "cpp",
+        "new": "cpp",
+        "shared_mutex": "cpp",
+        "sstream": "cpp",
+        "stdexcept": "cpp",
+        "streambuf": "cpp",
+        "thread": "cpp",
+        "cinttypes": "cpp",
+        "typeindex": "cpp",
+        "typeinfo": "cpp",
+        "valarray": "cpp",
+        "variant": "cpp",
+        "mprealsupport": "cpp"
+    },
+    "doxdocgen.file.copyrightTag": [
+        "@copyright Check&Visit (c) {year}"
+    ],
+    "editor.detectIndentation": false,
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "C_Cpp.errorSquiggles": "Disabled",
+    "gitmoji.additionalEmojis": [
+        {
+            "emoji": "🎨",
+            "code": ":art:",
+            "description": "Improve structure / format of the code."
+        },
+        {
+            "emoji": "⚡️",
+            "code": ":zap:",
+            "description": "Improve performance.",
+        },
+        {
+            "emoji": "🔥",
+            "code": ":fire:",
+            "description": "Remove code or files.",
+        },
+        {
+            "emoji": "🐛",
+            "code": ":bug:",
+            "description": "Fix a bug.",
+        },
+        {
+            "emoji": "🚑",
+            "code": ":ambulance:",
+            "description": "Critical hotfix.",
+        },
+        {
+            "emoji": "✨",
+            "code": ":sparkles:",
+            "description": "Introduce new features.",
+        },
+        {
+            "emoji": "📝",
+            "code": ":memo:",
+            "description": "Add or update documentation.",
+        },
+        {
+            "emoji": "💡",
+            "entity": "&#128161;",
+            "code": ":bulb:",
+            "description": "Add or update comments in source code.",
+            "name": "bulb"
+        },
+        {
+            "emoji": "🎉",
+            "code": ":tada:",
+            "description": "Begin a project.",
+        },
+        {
+            "emoji": "✅",
+            "code": ":white_check_mark:",
+            "description": "Add or update tests.",
+        },
+        {
+            "emoji": "🔖",
+            "code": ":bookmark:",
+            "description": "Release / Version tags.",
+        },
+        {
+            "emoji": "🚨",
+            "code": ":rotating_light:",
+            "description": "Remove linter warnings.",
+        },
+        {
+            "emoji": "🚧",
+            "code": ":construction:",
+            "description": "Work in progress.",
+        },
+        {
+            "emoji": "👷",
+            "code": ":construction_worker:",
+            "description": "Add or update CI build system.",
+        },
+        {
+            "emoji": "🔨",
+            "entity": "&#128296;",
+            "code": ":hammer:",
+            "description": "Add or update build scripts and configuration files.",
+            "name": "hammer"
+        },
+        {
+            "emoji": "💥",
+            "entity": "&#x1f4a5;",
+            "code": ":boom:",
+            "description": "Introduce breaking changes.",
+            "name": "boom"
+        }
+    ],
+    "gitmoji.onlyUseAdditionalEmojis": true,
+    "gitmoji.showEmojiCode": false,
+    "python.analysis.extraPaths": [
+        "build"
+    ],
+    "python.linting.pylintArgs": [
+        "--rcfile",
+        ".vscode/.pylintrc"
+    ],
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.formatting.autopep8Args": [
+        "--max-line-length",
+        "119"
+    ],
+    "editor.rulers": [
+        120
+    ],
+    "python.linting.mypyEnabled": true,
+    "python.linting.mypyArgs": [
+        "--config-file",
+        ".vscode/.mypy.ini"
+    ]
+}
