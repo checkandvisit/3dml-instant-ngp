@@ -130,11 +130,11 @@ class SceneComputer:
     def extract_density(self, step_idx: int = DEFAULT_MAX_STEP) -> str:
         """Extract Density"""
 
-        output_density = os.path.join(self.scene_dir, "density.png")
+        output_density = os.path.join(self.scene_dir, "density")
 
         start_time = process_time()
         density(snapshot_msgpack=get_snapshot_path(self.snapshot_dir, step_idx),
-                output_image=output_density)
+                output_folder=output_density, resolution=512)
         end_time = process_time()
         self.info["density_time"] = end_time-start_time
 

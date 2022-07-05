@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Density Extraction Script"""
 import os
-import shutil
-import tempfile
 
 import pyngp as ngp  # noqa
 
@@ -12,7 +10,7 @@ from instant_ngp_3dml.utils.profiler import profile
 
 @profile
 def density(snapshot_msgpack: str,
-            output_image: str,
+            output_folder: str,
             resolution: int = 256,
             thresh: float = 2.5,
             density_range: float = 4.0,
@@ -27,13 +25,10 @@ def density(snapshot_msgpack: str,
 
     testbed.display_gui = False
 
-    with tempfile.TemporaryDirectory() as dirpath:
-        res3d = testbed.compute_and_save_png_slices(
-            filename=os.path.join(dirpath, "density"),
-            resolution=resolution,
-            thresh=thresh,
-            density_range=density_range,
-            flip_y_and_z_axes=flip_y_and_z_axes)
-
-        filename = os.path.join(dirpath, f"density.density_slices_{res3d[0]}x{res3d[1]}x{res3d[2]}.png")
-        shutil.copyfile(filename, output_image)
+    os.makedirs(output_folder, exist_ok=True)
+    testbed.compute_and_save_png_slices(
+        filename=os.path.join(output_folder, "density"),
+        resolution=resolution,
+        thresh=thresh,
+        density_range=density_range,
+        flip_y_and_z_axes=flip_y_and_z_axes)
