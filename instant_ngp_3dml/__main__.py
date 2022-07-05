@@ -9,6 +9,7 @@ from typing import Dict
 import fire
 
 from instant_ngp_3dml.compute_scene import compute_scene
+from instant_ngp_3dml.density import density
 from instant_ngp_3dml.rendering import render
 from instant_ngp_3dml.training import train
 from instant_ngp_3dml.utils import DIR_PATH
@@ -23,7 +24,8 @@ sys.path += [os.path.dirname(pyd) for pyd in glob.iglob(
 modules: Dict[str, Callable] = {
     "rendering": render,
     "training": train,
-    "compute_scene": compute_scene
+    "compute_scene": compute_scene,
+    "density": density
 }
 
 HELP = """Geometry
