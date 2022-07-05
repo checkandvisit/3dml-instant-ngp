@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Training Script"""
 import time
+
 import pyngp as ngp  # noqa
 from tqdm import tqdm
 
