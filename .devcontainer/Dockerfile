@@ -80,6 +80,8 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTH
 #   COLMAP Installation
 #----------------------------------------------
 
+WORKDIR ${DEPENDENCIES}
+
 RUN echo "Installing apt packages..." \
     && export DEBIAN_FRONTEND=noninteractive \
     && apt -y update --no-install-recommends \
@@ -123,7 +125,6 @@ RUN echo "Installing apt packages..." \
 
 ARG CERES_SOLVER_VERSION=2.0.0
 RUN echo "Installing Ceres Solver ver. ${CERES_SOLVER_VERSION}..." \
-    && cd /opt \
     && git clone https://github.com/ceres-solver/ceres-solver \
     && cd ./ceres-solver \
     && git checkout ${CERES_SOLVER_VERSION} \
@@ -135,7 +136,6 @@ RUN echo "Installing Ceres Solver ver. ${CERES_SOLVER_VERSION}..." \
 
 ARG COLMAP_VERSION=3.7
 RUN echo "Installing COLMAP ver. ${COLMAP_VERSION}..." \
-    && cd /opt \
     && git clone https://github.com/colmap/colmap \
     && cd ./colmap \
     && git checkout ${COLMAP_VERSION} \
@@ -145,6 +145,17 @@ RUN echo "Installing COLMAP ver. ${COLMAP_VERSION}..." \
     && make -j2 \
     && make install \
     && colmap -h
+
+#----------------------------------------------
+#   NVIDIA-Optix
+#----------------------------------------------
+
+WORKDIR ${DEPENDENCIES}
+
+ENV OptiX_INSTALL_DIR=${DEPENDENCIES}/NVIDIA-OptiX-SDK-7.5.0-linux64-x86_64
+COPY .devcontainer/NVIDIA-OptiX-SDK-7.5.0-linux64-x86_64.sh NVIDIA-OptiX-SDK-7.5.0-linux64-x86_64.sh
+RUN mkdir -p ${OptiX_INSTALL_DIR} && \
+    bash NVIDIA-OptiX-SDK-7.5.0-linux64-x86_64.sh --skip-license --prefix=${OptiX_INSTALL_DIR}
 
 #----------------------------------------------
 #   Dependencies packages
@@ -173,8 +184,25 @@ COPY .devcontainer/requirements.txt .devcontainer/
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r .devcontainer/requirements.txt
 
+#-------------------------------------------------------------------------------------
+#                       DEV INSTALLATION
+#-------------------------------------------------------------------------------------
 
 FROM install as dev-instant-ngp
+
+#----------------------------------------------
+#   Vulkan
+#----------------------------------------------
+
+RUN wget -qO - http://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -       && \
+    wget -qO /etc/apt/sources.list.d/lunarg-vulkan-focal.list                                   \
+    http://packages.lunarg.com/vulkan/lunarg-vulkan-focal.list                                  && \
+    apt-get -y update                                                                           && \
+    apt-get -y install vulkan-sdk
+
+#----------------------------------------------
+#   Dev utils
+#----------------------------------------------
 
 RUN apt-get -y update &&       \
     apt-get -y install         \
@@ -188,6 +216,10 @@ COPY .devcontainer/requirements_dev.txt .devcontainer/
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r .devcontainer/requirements_dev.txt
 
+#-------------------------------------------------------------------------------------
+#                       BUILD INSTALLATION
+#-------------------------------------------------------------------------------------
+
 FROM install as build-instant-ngp
 
 COPY . .
@@ -196,6 +228,11 @@ ARG CPU_SIZE=4
 ENV TCNN_CUDA_ARCHITECTURES=75
 RUN cmake . -B build && \
     cmake --build build --config RelWithDebInfo -j${CPU_SIZE}
+
+
+#-------------------------------------------------------------------------------------
+#                       Finalisation
+#-------------------------------------------------------------------------------------
 
 FROM ${APP_ENV}-instant-ngp as final
 
