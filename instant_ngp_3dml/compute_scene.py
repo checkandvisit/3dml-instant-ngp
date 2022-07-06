@@ -4,10 +4,11 @@ import os
 from time import process_time
 from typing import Any
 from typing import Dict
+from typing import get_args
 from typing import List
 from typing import Literal
-from typing import get_args
 
+from instant_ngp_3dml.density import density
 from instant_ngp_3dml.rendering import render
 from instant_ngp_3dml.training import train
 from instant_ngp_3dml.utils import DATA_DIR
@@ -60,7 +61,7 @@ class SceneComputer:
         self.scene_dir = os.path.join(DATA_DIR, scene_name)
         if not os.path.isdir(self.scene_dir):
             logger.info("Download data from S3")
-            self.download_scene(S3_URL_FORMAT.format(scene_name))
+            self.download_scene(S3_URL_FORMAT.format(scene_name=scene_name))
 
         self.config_path = NERF_CONFIG.format(config=config)
 
@@ -125,6 +126,20 @@ class SceneComputer:
 
         return render_folder
 
+    @profile
+    def extract_density(self, step_idx: int = DEFAULT_MAX_STEP) -> str:
+        """Extract Density"""
+
+        output_density = os.path.join(self.scene_dir, "density")
+
+        start_time = process_time()
+        density(snapshot_msgpack=get_snapshot_path(self.snapshot_dir, step_idx),
+                output_folder=output_density, resolution=512)
+        end_time = process_time()
+        self.info["density_time"] = end_time-start_time
+
+        return output_density
+
     def save_info(self) -> str:
         """Save Info."""
 
@@ -145,7 +160,8 @@ def compute_scene(scene: SceneName,
                   output_video_fps: int = 2,
                   skip_color: bool = False,
                   skip_depth: bool = False,
-                  skip_topview: bool = False):
+                  skip_topview: bool = False,
+                  skip_density: bool = False):
     """
     Train and render a scene with NERF
 
@@ -176,6 +192,10 @@ def compute_scene(scene: SceneName,
         logger.info("ToneMap DepthMap")
         color_depth = depth_screenshot+"_png"
         tonemap_folder(depth_screenshot, color_depth)
+
+    if not skip_density:
+        logger.info("Render Density")
+        computer.extract_density()
 
     logger.info("Convert to video")
     color_video = os.path.join(computer.result_dir, "video.mp4")
