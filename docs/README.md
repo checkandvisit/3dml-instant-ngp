@@ -58,3 +58,8 @@ git pull
 git rebase nvidia/master
 git push --force
 ```
+
+N.B. You might need to pull new changes from the submodules as well
+```sh
+git submodule update --recursive
+```
