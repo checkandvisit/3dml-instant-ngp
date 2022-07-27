@@ -306,7 +306,7 @@ inline __host__ __device__ Ray pixel_to_ray(
     const Eigen::Vector3f &parallax_shift,
     bool snap_to_pixel_centers = false,
     float focus_z = 1.0f,
-    float dof = 0.0f,
+    float aperture_size = 0.0f,
     ECameraMode camera_mode = ECameraMode::Perspective,
     const CameraDistortion &camera_distortion = {},
     const float *__restrict__ distortion_data = nullptr,
@@ -376,13 +376,13 @@ inline __host__ __device__ Ray pixel_to_ray(
     dir = camera_matrix.block<3, 3>(0, 0) * dir;
     Eigen::Vector3f origin = camera_matrix.block<3, 3>(0, 0) * head_pos + camera_matrix.col(3);
 
-    if (dof == 0.0f)
+    if (aperture_size == 0.0f)
     {
         return {origin, dir};
     }
 
     Eigen::Vector3f lookat = origin + dir * focus_z;
-    Eigen::Vector2f blur = dof * square2disk_shirley(ld_random_val_2d(spp, (uint32_t)pixel.x() * 19349663 + (uint32_t)pixel.y() * 96925573) * 2.0f - Eigen::Vector2f::Ones());
+    Eigen::Vector2f blur = aperture_size * square2disk_shirley(ld_random_val_2d(spp, (uint32_t)pixel.x() * 19349663 + (uint32_t)pixel.y() * 96925573) * 2.0f - Eigen::Vector2f::Ones());
     origin += camera_matrix.block<3, 2>(0, 0) * blur;
     dir = (lookat - origin) / focus_z;
 
