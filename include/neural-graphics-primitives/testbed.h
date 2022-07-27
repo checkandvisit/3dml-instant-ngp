@@ -86,7 +86,7 @@ public:
 			const BoundingBox& aabb,
 			float floor_y,
 			float plane_z,
-			float dof,
+			float aperture_size,
 			const float* envmap_data,
 			const Eigen::Vector2i& envmap_resolution,
 			Eigen::Array4f* frame_buffer,
@@ -144,7 +144,7 @@ public:
 			const BoundingBox& render_aabb,
 			const Eigen::Matrix3f& render_aabb_to_local,
 			float plane_z,
-			float dof,
+			float aperture_size,
 			const CameraDistortion& camera_distortion,
 			const float* envmap_data,
 			const Eigen::Vector2i& envmap_resolution,
@@ -340,7 +340,7 @@ public:
 	void compute_mesh_vertex_colors();
 	tcnn::GPUMemory<float> get_density_on_grid(Eigen::Vector3i res3d, const BoundingBox& aabb, const Eigen::Matrix3f& render_aabb_to_local); // network version (nerf or sdf)
 	tcnn::GPUMemory<float> get_sdf_gt_on_grid(Eigen::Vector3i res3d, const BoundingBox& aabb, const Eigen::Matrix3f& render_aabb_to_local); // sdf gt version (sdf only)
-	tcnn::GPUMemory<Eigen::Array4f> get_rgba_on_grid(Eigen::Vector3i res3d, Eigen::Vector3f ray_dir);
+	tcnn::GPUMemory<Eigen::Array4f> get_rgba_on_grid(Eigen::Vector3i res3d, Eigen::Vector3f ray_dir, bool voxel_centers, bool density_to_alpha);
 	int marching_cubes(Eigen::Vector3i res3d, const BoundingBox& render_aabb, const Eigen::Matrix3f& render_aabb_to_local, float thresh);
 
 	// Determines the 3d focus point by rendering a little 16x16 depth image around
@@ -447,7 +447,7 @@ public:
 	float m_last_render_res_factor = 1.0f;
 	float m_scale = 1.0;
 	float m_prev_scale = 1.0;
-	float m_dof = 0.0f;
+	float m_aperture_size = 0.0f;
 	Eigen::Vector2f m_relative_focal_length = Eigen::Vector2f::Ones();
 	uint32_t m_fov_axis = 1;
 	float m_zoom = 1.f; // 2d zoom factor (for insets?)
