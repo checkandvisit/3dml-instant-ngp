@@ -2769,7 +2769,6 @@ void Testbed::render_frame(const Matrix<float, 3, 4>& camera_matrix0, const Matr
 					metadata.resolution,
 					m_fov_axis,
 					m_zoom,
-					m_max_depth,
 					Vector2f::Constant(0.5f),
 					m_stream.get()
 				);
