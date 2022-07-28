@@ -459,7 +459,9 @@ __global__ void overlay_depth_kernel(
 	float depth_scale,
 	Vector2i image_resolution,
 	int fov_axis,
-	float zoom, Eigen::Vector2f screen_center,
+	float zoom,
+	float max_depth,
+	Eigen::Vector2f screen_center,
 	cudaSurfaceObject_t surface
 ) {
 	uint32_t x = threadIdx.x + blockDim.x * blockIdx.x;
@@ -489,7 +491,7 @@ __global__ void overlay_depth_kernel(
 	if (srcx >= image_resolution.x() || srcy >= image_resolution.y() || srcx < 0 || srcy < 0) {
         color = {0.0f, 0.0f, 0.0f, 0.0f};
 	} else {
-        float depth_value = depth[srcidx] * depth_scale;
+        float depth_value = depth[srcidx] * depth_scale / max_depth;
         Array3f c = colormap_turbo(depth_value);
         color = {c[0], c[1], c[2], 1.0f};
 	}
@@ -706,6 +708,7 @@ void CudaRenderBuffer::overlay_depth(
 	const Vector2i& image_resolution,
 	int fov_axis,
 	float zoom,
+    float max_depth,
 	const Eigen::Vector2f& screen_center,
 	cudaStream_t stream
 ) {
@@ -720,6 +723,7 @@ void CudaRenderBuffer::overlay_depth(
 		image_resolution,
 		fov_axis,
 		zoom,
+		max_depth,
 		screen_center,
 		surface()
 	);

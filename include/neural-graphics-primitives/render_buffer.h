@@ -225,6 +225,7 @@ public:
 		const Eigen::Vector2i& resolution,
 		int fov_axis,
 		float zoom,
+		float max_depth,
 		const Eigen::Vector2f& screen_center,
 		cudaStream_t stream
 	);

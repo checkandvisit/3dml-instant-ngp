@@ -813,6 +813,8 @@ void Testbed::imgui() {
 					ImGui::PlotLines("Training view exposures", exposures.data(), exposures.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(0, 60.f));
 				}
 
+				accum_reset |= ImGui::SliderFloat("Depth Threshold", &m_max_depth, 0.1f, 16.f);
+
 				if (ImGui::SliderInt("glow mode", &m_nerf.glow_mode, 0, 16)) {
 					accum_reset = true;
 				}
@@ -2767,6 +2769,7 @@ void Testbed::render_frame(const Matrix<float, 3, 4>& camera_matrix0, const Matr
 					metadata.resolution,
 					m_fov_axis,
 					m_zoom,
+					m_max_depth,
 					Vector2f::Constant(0.5f),
 					m_stream.get()
 				);
@@ -2779,6 +2782,7 @@ void Testbed::render_frame(const Matrix<float, 3, 4>& camera_matrix0, const Matr
                     metadata.resolution,
                     m_fov_axis,
                     m_zoom,
+					m_max_depth,
 					Vector2f::Constant(0.5f),
                     m_stream.get()
                 ); 
