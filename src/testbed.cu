@@ -582,6 +582,7 @@ void Testbed::imgui() {
 		}
 
 		ImGui::Checkbox("Dynamic resolution", &m_dynamic_res);
+		ImGui::Checkbox("Render Groundtruth", &m_render_ground_truth);
 		ImGui::SliderFloat("Target FPS", &m_dynamic_res_target_fps, 2.0f, 144.0f, "%.01f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat);
 		ImGui::SliderInt("Max spp", &m_max_spp, 0, 1024, "%d", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_NoRoundToFormat);
 
