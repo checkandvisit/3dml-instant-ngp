@@ -432,6 +432,8 @@ public:
 
 	bool m_include_optimizer_state_in_snapshot = false;
 	bool m_render_ground_truth = false;
+	EGroundTruthRenderMode m_ground_truth_render_mode = EGroundTruthRenderMode::Shade;
+
 	bool m_train = false;
 	bool m_training_data_available = false;
 	bool m_render = true;
@@ -451,6 +453,7 @@ public:
 	Eigen::Vector2f m_relative_focal_length = Eigen::Vector2f::Ones();
 	uint32_t m_fov_axis = 1;
 	float m_zoom = 1.f; // 2d zoom factor (for insets?)
+	float m_max_depth = 8.0f; // Max depth treshold for tonemapper
 	Eigen::Vector2f m_screen_center = Eigen::Vector2f::Constant(0.5f); // center of 2d zoom
 
 	Eigen::Matrix<float, 3, 4> m_camera = Eigen::Matrix<float, 3, 4>::Zero();

@@ -624,7 +624,7 @@ NerfDataset load_nerf(const std::vector<filesystem::path>& jsonpaths, float shar
 					if (wa != dst.res.x() || ha != dst.res.y()) {
 						throw std::runtime_error{fmt::format("Depth image {} has wrong resolution.", depthpath.str())};
 					}
-					//tlog::success() << "Depth loaded from " << depthpath;
+					// tlog::success() << "Depth loaded from " << depthpath;
 				}
 			}
 
@@ -780,7 +780,7 @@ void NerfDataset::set_training_image(int frame_idx, const Eigen::Vector2i& image
 
 		switch (depth_type) {
 			default: throw std::runtime_error{"unknown depth type in set_training_image"};
-			case EDepthDataType::UShort: linear_kernel(copy_depth<uint16_t>, 0, nullptr, n_pixels, depth_dst, (const uint16_t*)depth_pixels, depth_scale); break;
+			case EDepthDataType::UShort: linear_kernel(copy_depth<uint16_t>, 0, nullptr, n_pixels, depth_dst, (const uint16_t*)depth_pixels, depth_scale / (1 << 16)); break;
 			case EDepthDataType::Float: linear_kernel(copy_depth<float>, 0, nullptr, n_pixels, depth_dst, (const float*)depth_pixels, depth_scale); break;
 		}
 	} else {
