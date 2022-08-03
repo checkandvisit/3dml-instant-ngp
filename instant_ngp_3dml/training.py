@@ -16,9 +16,9 @@ def train(scene: str = "",
           save_snapshot: str = "",
           n_steps: int = -1,
           training_info: str = "",
-          depth_supervision_lambda: float = 0.0):
+          enable_depth_supervision: bool = False):
     """Train NeRF Scene"""
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,no-member
 
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
 
@@ -35,7 +35,9 @@ def train(scene: str = "",
     testbed.shall_train = True
 
     testbed.nerf.render_with_camera_distortion = True
-    testbed.nerf.depth_supervision_lambda = depth_supervision_lambda
+
+    if not enable_depth_supervision:
+        testbed.nerf.training.depth_supervision_lambda = 0.0
 
     old_training_step = 0
     if n_steps < 0:
@@ -57,16 +59,21 @@ def train(scene: str = "",
                     old_training_step = 0
                     t.reset()
 
+                if enable_depth_supervision:
+                    depth_supervision_lambda = max(1.0 - testbed.training_step / 2000, 0.2)
+                    testbed.nerf.training.depth_supervision_lambda = depth_supervision_lambda
+
                 now = time.monotonic()
 
                 step_info.append({
                     "step": testbed.training_step,
                     "loss": testbed.loss,
-                    "time": now})
+                    "time": now,
+                    "depth_supervision_lambda": depth_supervision_lambda})
 
                 if now - tqdm_last_update > 0.1:
                     t.update(testbed.training_step - old_training_step)
-                    t.set_postfix(loss=testbed.loss)
+                    t.set_postfix(loss=testbed.loss, depth=depth_supervision_lambda)
                     old_training_step = testbed.training_step
                     tqdm_last_update = now
 
@@ -82,7 +89,9 @@ def train(scene: str = "",
         info = {
             "begin_time": begin_time,
             "end_time": end_time,
-            "step_info": step_info
+            "step_info": step_info,
+            "n_steps": n_steps,
+            "enable_depth_supervision": enable_depth_supervision
         }
 
         os.makedirs(os.path.dirname(training_info), exist_ok=True)
