@@ -350,7 +350,9 @@ __device__ Array3f tonemap(Array3f x, ETonemapCurve curve) {
 		return x * (1.f / (Y + 1.0f));
 	} else {
 		// if (curve == ETonemapCurve::Turbo)
-		return colormap_turbo(x.x/8.0f);
+
+		// TODO replace 8.0f by m_max_depth from testbed
+		return colormap_turbo(x.x()/8.0f);
 	}
 
 	Array3f color_sq = x * x;
