@@ -299,6 +299,7 @@ PYBIND11_MODULE(pyngp, m) {
 		.value("ACES", ETonemapCurve::ACES)
 		.value("Hable", ETonemapCurve::Hable)
 		.value("Reinhard", ETonemapCurve::Reinhard)
+		.value("Turbo", ETonemapCurve::Turbo)
 		.export_values();
 
 	py::enum_<ECameraDistortionMode>(m, "CameraDistortionMode")
