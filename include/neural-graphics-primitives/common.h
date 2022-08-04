@@ -142,9 +142,10 @@ enum class ETonemapCurve : int {
 	Identity,
 	ACES,
 	Hable,
-	Reinhard
+	Reinhard,
+	Turbo
 };
-static constexpr const char* TonemapCurveStr = "Identity\0ACES\0Hable\0Reinhard\0\0";
+static constexpr const char* TonemapCurveStr = "Identity\0ACES\0Hable\0Reinhard\0Turbo\0\0";
 
 enum class EDlssQuality : int {
 	UltraPerformance,

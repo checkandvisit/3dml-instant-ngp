@@ -270,6 +270,36 @@ __global__ void accumulate_kernel(Vector2i resolution, Array4f* frame_buffer, Ar
 	accumulate_buffer[idx] = tmp;
 }
 
+__device__ Array3f colormap_turbo(float x) {
+	const Vector4f kRedVec4 =   Vector4f(0.13572138f, 4.61539260f, -42.66032258f, 132.13108234f);
+	const Vector4f kGreenVec4 = Vector4f(0.09140261f, 2.19418839f, 4.84296658f, -14.18503333f);
+	const Vector4f kBlueVec4 =  Vector4f(0.10667330f, 12.64194608f, -60.58204836f, 110.36276771f);
+	const Vector2f kRedVec2 =   Vector2f(-152.94239396f, 59.28637943f);
+	const Vector2f kGreenVec2 = Vector2f(4.27729857f, 2.82956604f);
+	const Vector2f kBlueVec2 =  Vector2f(-89.90310912f, 27.34824973f);
+
+	x = __saturatef(x);
+	Vector4f v4 = Vector4f{ 1.0f, x, x * x, x * x * x };
+	Vector2f v2 = Vector2f{ v4.w() * x, v4.w() * v4.z() };
+	return Array3f{
+		v4.dot(kRedVec4)   + v2.dot(kRedVec2),
+		v4.dot(kGreenVec4) + v2.dot(kGreenVec2),
+		v4.dot(kBlueVec4)  + v2.dot(kBlueVec2)
+	};
+}
+
+__device__ Array3f colormap_viridis(float x) {
+	const Array3f c0 = Array3f{0.2777273272234177f, 0.005407344544966578f, 0.3340998053353061f};
+	const Array3f c1 = Array3f{0.1050930431085774f, 1.404613529898575f, 1.384590162594685f};
+	const Array3f c2 = Array3f{-0.3308618287255563f, 0.214847559468213f, 0.09509516302823659f};
+	const Array3f c3 = Array3f{-4.634230498983486f, -5.799100973351585f, -19.33244095627987f};
+	const Array3f c4 = Array3f{6.228269936347081f, 14.17993336680509f, 56.69055260068105f};
+	const Array3f c5 = Array3f{4.776384997670288f, -13.74514537774601f, -65.35303263337234f};
+	const Array3f c6 = Array3f{-5.435455855934631f, 4.645852612178535f, 26.3124352495832f};
+	x = __saturatef(x);
+	return (c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*c6))))));
+}
+
 __device__ Array3f tonemap(Array3f x, ETonemapCurve curve) {
 	if (curve == ETonemapCurve::Identity) {
 		return x;
@@ -313,11 +343,16 @@ __device__ Array3f tonemap(Array3f x, ETonemapCurve curve) {
 		k2 = k2 * white_scale;
 		k3 = 4.0f * k3;
 		k4 = 2.0f * k4;
-	} else { //if (curve == ETonemapCurve::Reinhard)
+	} else if (curve == ETonemapCurve::Reinhard) {
 		const Vector3f luminance_coefficients = Vector3f(0.2126f, 0.7152f, 0.0722f);
 		float Y = luminance_coefficients.dot(x.matrix());
 
 		return x * (1.f / (Y + 1.0f));
+	} else {
+		// if (curve == ETonemapCurve::Turbo)
+
+		// TODO replace 8.0f by m_max_depth from testbed
+		return colormap_turbo(x.x()/8.0f);
 	}
 
 	Array3f color_sq = x * x;
@@ -420,36 +455,6 @@ __global__ void overlay_image_kernel(
 	surf2Dread((float4*)&prev_color, surface, x * sizeof(float4), y);
 	color = color * alpha + prev_color * (1.f-alpha);
 	surf2Dwrite(to_float4(color), surface, x * sizeof(float4), y);
-}
-
-__device__ Array3f colormap_turbo(float x) {
-	const Vector4f kRedVec4 =   Vector4f(0.13572138f, 4.61539260f, -42.66032258f, 132.13108234f);
-	const Vector4f kGreenVec4 = Vector4f(0.09140261f, 2.19418839f, 4.84296658f, -14.18503333f);
-	const Vector4f kBlueVec4 =  Vector4f(0.10667330f, 12.64194608f, -60.58204836f, 110.36276771f);
-	const Vector2f kRedVec2 =   Vector2f(-152.94239396f, 59.28637943f);
-	const Vector2f kGreenVec2 = Vector2f(4.27729857f, 2.82956604f);
-	const Vector2f kBlueVec2 =  Vector2f(-89.90310912f, 27.34824973f);
-
-	x = __saturatef(x);
-	Vector4f v4 = Vector4f{ 1.0f, x, x * x, x * x * x };
-	Vector2f v2 = Vector2f{ v4.w() * x, v4.w() * v4.z() };
-	return Array3f{
-		v4.dot(kRedVec4)   + v2.dot(kRedVec2),
-		v4.dot(kGreenVec4) + v2.dot(kGreenVec2),
-		v4.dot(kBlueVec4)  + v2.dot(kBlueVec2)
-	};
-}
-
-__device__ Array3f colormap_viridis(float x) {
-	const Array3f c0 = Array3f{0.2777273272234177f, 0.005407344544966578f, 0.3340998053353061f};
-	const Array3f c1 = Array3f{0.1050930431085774f, 1.404613529898575f, 1.384590162594685f};
-	const Array3f c2 = Array3f{-0.3308618287255563f, 0.214847559468213f, 0.09509516302823659f};
-	const Array3f c3 = Array3f{-4.634230498983486f, -5.799100973351585f, -19.33244095627987f};
-	const Array3f c4 = Array3f{6.228269936347081f, 14.17993336680509f, 56.69055260068105f};
-	const Array3f c5 = Array3f{4.776384997670288f, -13.74514537774601f, -65.35303263337234f};
-	const Array3f c6 = Array3f{-5.435455855934631f, 4.645852612178535f, 26.3124352495832f};
-	x = __saturatef(x);
-	return (c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*c6))))));
 }
 
 __global__ void overlay_depth_kernel(
