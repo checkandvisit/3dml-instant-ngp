@@ -61,5 +61,5 @@ git push --force
 
 N.B. You might need to pull new changes from the submodules as well
 ```sh
-git submodule update --recursive
+git submodule update --init --recursive
 ```

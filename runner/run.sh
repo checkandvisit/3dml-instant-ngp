@@ -6,7 +6,7 @@ cd $ROOT_DIR/..
 
 scene=kitchen
 
-python3 scripts/run.py --scene data/ours/${scene}/transform.json            \
+python3 scripts/run.py --scene data/${scene}/transform.json            \
         --mode nerf                                                         \
         --network base.json                                                 \
         --gui
