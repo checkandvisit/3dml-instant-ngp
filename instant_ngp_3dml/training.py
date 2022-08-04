@@ -36,8 +36,9 @@ def train(scene: str = "",
 
     testbed.nerf.render_with_camera_distortion = True
 
+    depth_supervision_lambda = 0.0
     if not enable_depth_supervision:
-        testbed.nerf.training.depth_supervision_lambda = 0.0
+        testbed.nerf.training.depth_supervision_lambda = depth_supervision_lambda
 
     old_training_step = 0
     if n_steps < 0:
