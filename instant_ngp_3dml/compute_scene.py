@@ -19,7 +19,7 @@ from instant_ngp_3dml.utils.profiler import export_profiling_events
 from instant_ngp_3dml.utils.profiler import profile
 from instant_ngp_3dml.utils.tonemapper import tonemap_folder
 
-DEFAULT_MAX_STEP = 4000 # 20000
+DEFAULT_MAX_STEP = 20000
 ENABLE_S3_UPLOAD = False
 S3_URL_FORMAT = "s3://checkandvisit-3dml-dev/dataset_test/nerf/{scene_name}/"
 
@@ -160,9 +160,9 @@ def compute_scene(scene: SceneName,
                   nerf_config_file: str = "",
                   display: bool = False,
                   output_video_fps: int = 2,
-                  skip_color: bool = True,
-                  skip_depth: bool = True,
-                  skip_topview: bool = True,
+                  skip_color: bool = False,
+                  skip_depth: bool = False,
+                  skip_topview: bool = False,
                   skip_density: bool = False):
     """
     Train and render a scene with NERF
