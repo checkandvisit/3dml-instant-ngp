@@ -23,7 +23,7 @@ DEFAULT_MAX_STEP = 20000
 ENABLE_S3_UPLOAD = False
 S3_URL_FORMAT = "s3://checkandvisit-3dml-dev/dataset_test/nerf/{scene_name}/"
 
-SceneName = Literal["lego", "barbershop", "0223-1010", "0223-1118", "0223-1120"]
+SceneName = Literal["lego", "barbershop", "0223-1010", "0223-1118", "0223-1120", "kitchen", "voiture"]
 
 
 def img_folder_to_video(folder: str, output_mp4: str, fps: int):
@@ -127,13 +127,14 @@ class SceneComputer:
         return render_folder
 
     @profile
-    def extract_density(self, step_idx: int = DEFAULT_MAX_STEP) -> str:
+    def extract_density(self, nerf_config_file: str, step_idx: int = DEFAULT_MAX_STEP) -> str:
         """Extract Density"""
 
         output_density = os.path.join(self.scene_dir, "density")
 
         start_time = process_time()
         density(snapshot_msgpack=get_snapshot_path(self.snapshot_dir, step_idx),
+                nerf_config_file=nerf_config_file,
                 output_folder=output_density, resolution=512)
         end_time = process_time()
         self.info["density_time"] = end_time-start_time
@@ -156,6 +157,7 @@ class SceneComputer:
 
 def compute_scene(scene: SceneName,
                   config: str = "base",
+                  nerf_config_file: str = "",
                   display: bool = False,
                   output_video_fps: int = 2,
                   skip_color: bool = False,
@@ -194,8 +196,9 @@ def compute_scene(scene: SceneName,
         tonemap_folder(depth_screenshot, color_depth)
 
     if not skip_density:
+        assert os.path.isfile(nerf_config_file)
         logger.info("Render Density")
-        computer.extract_density()
+        computer.extract_density(nerf_config_file)
 
     logger.info("Convert to video")
     color_video = os.path.join(computer.result_dir, "video.mp4")
