@@ -23,7 +23,7 @@ DEFAULT_MAX_STEP = 4000 # 20000
 ENABLE_S3_UPLOAD = False
 S3_URL_FORMAT = "s3://checkandvisit-3dml-dev/dataset_test/nerf/{scene_name}/"
 
-SceneName = Literal["lego", "barbershop", "0223-1010", "0223-1118", "0223-1120"]
+SceneName = Literal["lego", "barbershop", "0223-1010", "0223-1118", "0223-1120", "kitchen", "voiture"]
 
 
 def img_folder_to_video(folder: str, output_mp4: str, fps: int):
