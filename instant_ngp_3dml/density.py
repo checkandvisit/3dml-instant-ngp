@@ -63,20 +63,21 @@ def main(snapshot_msgpack: str,
                 local_p_max = np.array([x+1, y+1, z+1])*scale*cube_size
                 ngp_render_aabb = ngp.BoundingBox(local_p_min, local_p_max)
 
-                density_data = {
-                    "ngp_render_aabb": {
-                        "p_min": local_p_min.tolist(),
-                        "p_max": local_p_max.tolist()
-                    }
-                }
-
-                testbed.compute_and_save_png_slices(
+                res = testbed.compute_and_save_png_slices(
                     filename=os.path.join(out_density_folder, f"density_{index}"),
                     resolution=resolution*cube_size,
                     aabb=ngp_render_aabb,
                     thresh=thresh,
                     density_range=density_range,
                     flip_y_and_z_axes=False)
+
+                density_data = {
+                    "ngp_render_aabb": {
+                        "p_min": local_p_min.tolist(),
+                        "p_max": local_p_max.tolist()
+                    },
+                    "res": res.tolist()
+                }
 
                 write_json(os.path.join(out_density_folder, f"density_{index}.json"), density_data, pretty=True)
 
