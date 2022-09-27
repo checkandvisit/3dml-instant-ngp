@@ -42,16 +42,31 @@ def __save(outname, image):
 
 
 @profile
-def render(snapshot_msgpack: str,
-           transforms_json: str,
-           output_dir: str,
-           spp: int = 4,
-           display: bool = False,
-           num_max_images: int = -1,
-           downscale_factor: float = 1.0,
-           render_mode: str = "color",
-           camera_mode: str = "perspective") -> str:
-    """Nerf renderer"""
+def main(snapshot_msgpack: str,
+         nerf_transform_json: str,
+         out_rendering_folder: str,
+         spp: int = 4,
+         display: bool = False,
+         num_max_images: int = -1,
+         downscale_factor: float = 1.0,
+         render_mode: str = "color",
+         camera_mode: str = "perspective"):
+    """Render NeRF Scene.
+
+        Args:
+            snapshot_msgpack: Input NeRF Weight
+            nerf_transform_json: Input NeRF Transform Json
+            out_rendering_folder: Output Folder with rendered images
+            spp: Sample per pixel
+            display: Display result directly in GUI
+            num_max_images: Limit the number of rendered images
+            downscale_factor: Downscale rendered frames
+            render_mode: Renderer method
+            camera_mode: Camera model
+
+        Raises:
+            ValueError: if CameraMode or RenderMode doesn't exist
+    """
     # pylint: disable=too-many-arguments,too-many-statements,too-many-branches
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
 
@@ -59,8 +74,8 @@ def render(snapshot_msgpack: str,
     assert snapshot_msgpack.endswith(".msgpack")
     testbed.load_snapshot(snapshot_msgpack)
 
-    logger.debug(f"Load rendering transforms from {transforms_json}")
-    ref_transforms = read_json(transforms_json)
+    logger.debug(f"Load rendering transforms from {nerf_transform_json}")
+    ref_transforms = read_json(nerf_transform_json)
 
     # Pick a sensible GUI resolution depending on arguments.
     sw = int(ref_transforms["w"] / downscale_factor)
@@ -104,17 +119,12 @@ def render(snapshot_msgpack: str,
     if num_max_images > 0:
         nb_frames = min(num_max_images, nb_frames)
 
-    images_dir = os.path.join(output_dir, f"{render_mode}_{camera_mode}")
-    if display:
-        images_dir += "_gl"
-    os.makedirs(images_dir, exist_ok=True)
-
     with tqdm(desc="Rendering", total=nb_frames, unit="frame") as t:
         for idx in range(nb_frames):
             f = ref_transforms["frames"][int(idx)]
             cam_matrix = f["transform_matrix"]
             testbed.set_nerf_camera_matrix(np.matrix(cam_matrix)[:-1, :])
-            outname = os.path.join(images_dir, os.path.basename(f["file_path"]))
+            outname = os.path.join(out_rendering_folder, os.path.basename(f["file_path"]))
 
             if display:
                 testbed.reset_accumulation()
@@ -137,5 +147,3 @@ def render(snapshot_msgpack: str,
                 raise ValueError(f"Invalid render mode '{render_mode}'. Should be in {RENDER_MODES.keys()}")
 
             t.update(1)
-
-    return images_dir

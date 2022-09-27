@@ -9,9 +9,9 @@ from typing import Dict
 import fire
 
 from instant_ngp_3dml.compute_scene import compute_scene
-from instant_ngp_3dml.density import density
-from instant_ngp_3dml.rendering import render
-from instant_ngp_3dml.training import train
+from instant_ngp_3dml.density import main as density
+from instant_ngp_3dml.rendering import main as render
+from instant_ngp_3dml.training import main as train
 from instant_ngp_3dml.utils import DIR_PATH
 
 # Add pyngp to PYTHONPATH
