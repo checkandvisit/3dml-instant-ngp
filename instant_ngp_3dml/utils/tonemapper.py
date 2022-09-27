@@ -19,7 +19,7 @@ CM_MAGMA: np.ndarray = (np.array([get_cmap('magma').colors]).transpose(
 class TonemapParameters:
     """ToneMap Parameters."""
     min_value: float = 0
-    max_value: float = 25  # Compute Scale from NeRF Resizing
+    max_value: float = 8  # Compute Scale from NeRF Resizing
     colormap: Optional[np.ndarray] = CM_MAGMA
     gamma: float = 0.5
     color_gamma: float = 2.2
