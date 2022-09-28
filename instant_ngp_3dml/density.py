@@ -19,7 +19,8 @@ def main(snapshot_msgpack: str,
          resolution: int = 256,
          thresh: float = 2.5,
          density_range: float = 4.0,
-         cube_size: int = 4):
+         cube_size: int = 4,
+         as_binary: bool = False):
     """Extract Density from NeRF Volume.
 
         The NeRF volume is divided into cubes where each cube has two files:
@@ -32,7 +33,8 @@ def main(snapshot_msgpack: str,
             resolution: Grid resolution in voxel by meters
             thresh: Treshold value for density extraction
             density_range: Density Range to map density value in grayscale
-            cube_size: Size of extracted cube
+            cube_size: Size of extracted cube,
+            as_binary: Export density as binary instead png slice
     """
     # pylint: disable=too-many-arguments,too-many-statements,too-many-branches
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
@@ -63,13 +65,19 @@ def main(snapshot_msgpack: str,
                 local_p_max = np.array([x+1, y+1, z+1])*scale*cube_size
                 ngp_render_aabb = ngp.BoundingBox(local_p_min, local_p_max)
 
-                res = testbed.compute_and_save_png_slices(
-                    filename=os.path.join(out_density_folder, f"density_{index}"),
-                    resolution=resolution*cube_size,
-                    aabb=ngp_render_aabb,
-                    thresh=thresh,
-                    density_range=density_range,
-                    flip_y_and_z_axes=False)
+                if as_binary:
+                    res = testbed.save_density(
+                        filename=os.path.join(out_density_folder, f"density_{index}"),
+                        resolution=resolution*cube_size,
+                        aabb=ngp_render_aabb)
+                else:
+                    res = testbed.compute_and_save_png_slices(
+                        filename=os.path.join(out_density_folder, f"density_{index}"),
+                        resolution=resolution*cube_size,
+                        aabb=ngp_render_aabb,
+                        thresh=thresh,
+                        density_range=density_range,
+                        flip_y_and_z_axes=False)
 
                 density_data = {
                     "ngp_render_aabb": {
