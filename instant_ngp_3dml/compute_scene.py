@@ -154,7 +154,7 @@ class SceneComputer:
         density(snapshot_msgpack=get_snapshot_path(self.snapshot_folder, step_idx),
                 nerf_config_json=nerf_config_json,
                 out_density_folder=out_density_folder,
-                resolution=50)
+                vox_by_m=50)
         end_time = process_time()
         self.info["density_time"] = end_time-start_time
 
