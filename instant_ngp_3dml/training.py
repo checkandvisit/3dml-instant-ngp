@@ -1,100 +1,108 @@
 #!/usr/bin/env python3
 """Training Script"""
-import json
-import os
 import time
+from typing import Any
+from typing import Dict
 
 import pyngp as ngp  # noqa
 from tqdm import tqdm
 
+from instant_ngp_3dml.utils.io import write_json
 from instant_ngp_3dml.utils.log import logger
+from instant_ngp_3dml.utils.profiler import profile
 
 
-def train(scene: str = "",
-          network: str = "",
-          load_snapshot: str = "",
-          save_snapshot: str = "",
-          n_steps: int = -1,
-          training_info: str = "",
-          enable_depth_supervision: bool = False):
-    """Train NeRF Scene"""
+def __train(testbed: ngp.Testbed, n_steps: int, enable_depth_supervision: bool) -> Dict[str, Any]:
+
+    old_training_step = 0
+    step_info = []
+    begin_time = time.monotonic()
+    tqdm_last_update = 0.0
+    with tqdm(desc="Training", total=n_steps, unit="step") as t:
+        while testbed.frame():
+
+            # What will happen when training is done?
+            if testbed.training_step >= n_steps:
+                break
+
+            # Update progress bar
+            if testbed.training_step < old_training_step or old_training_step == 0:
+                old_training_step = 0
+                t.reset()
+
+            if enable_depth_supervision:
+                depth_supervision_lambda = max(1.0 - testbed.training_step / 2000, 0.2)
+                testbed.nerf.training.depth_supervision_lambda = depth_supervision_lambda
+
+            now = time.monotonic()
+
+            step_info.append({
+                "step": testbed.training_step,
+                "loss": testbed.loss,
+                "time": now,
+                "depth_supervision_lambda": depth_supervision_lambda})
+
+            if now - tqdm_last_update > 0.1:
+                t.update(testbed.training_step - old_training_step)
+                t.set_postfix(loss=testbed.loss, depth=depth_supervision_lambda)
+                old_training_step = testbed.training_step
+                tqdm_last_update = now
+
+    end_time = time.monotonic()
+
+    return {
+        "begin_time": begin_time,
+        "end_time": end_time,
+        "step_info": step_info,
+        "n_steps": n_steps,
+        "enable_depth_supervision": enable_depth_supervision
+    }
+
+
+@profile
+def main(nerf_transform_json: str,
+         nerf_network_configuration_json: str,
+         out_snapshot_msgpack: str,
+         out_training_info_json: str = "",
+         snapshot_msgpack: str = "",
+         n_steps: int = 100000,
+         enable_depth_supervision: bool = False):
+    """Train NeRF Scene.
+
+        Args:
+            nerf_transform_json: Input NeRF Transform Json
+            nerf_network_configuration_json: Input configuration for NeRF Network
+            out_snapshot_msgpack: Output NeRF Weight
+            out_training_info_json: Output Json with Training Information
+            snapshot_msgpack: Optional Input NeRF Weight
+            n_steps: Nb training iterations
+            enable_depth_supervision: If specified, NeRF is train with Depth Supervision
+
+    """
     # pylint: disable=too-many-arguments,no-member
 
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
 
-    if scene != "":
-        testbed.load_training_data(scene)
+    testbed.load_training_data(nerf_transform_json)
+    testbed.reload_network_from_file(nerf_network_configuration_json)
 
-    if load_snapshot != "":
-        logger.info(f"Loading snapshot {load_snapshot}")
-        testbed.load_snapshot(load_snapshot)
-    else:
-        assert network != "", "Snapshot or Network need to be defined"
-        testbed.reload_network_from_file(network)
+    if snapshot_msgpack != "":
+        logger.info(f"Loading snapshot {snapshot_msgpack}")
+        testbed.load_snapshot(snapshot_msgpack)
 
     testbed.shall_train = True
-
     testbed.nerf.render_with_camera_distortion = True
 
-    depth_supervision_lambda = 0.0
     if not enable_depth_supervision:
-        testbed.nerf.training.depth_supervision_lambda = depth_supervision_lambda
+        testbed.nerf.training.depth_supervision_lambda = 0.0
 
-    old_training_step = 0
-    if n_steps < 0:
-        n_steps = 100000
-
-    step_info = []
     if n_steps > 0:
-        begin_time = time.monotonic()
-        tqdm_last_update = 0.0
-        with tqdm(desc="Training", total=n_steps, unit="step") as t:
-            while testbed.frame():
+        info = __train(testbed, n_steps, enable_depth_supervision)
 
-                # What will happen when training is done?
-                if testbed.training_step >= n_steps:
-                    break
+    if out_snapshot_msgpack != "":
+        logger.info(f"Saving snapshot {out_snapshot_msgpack}")
+        testbed.save_snapshot(out_snapshot_msgpack, False)
 
-                # Update progress bar
-                if testbed.training_step < old_training_step or old_training_step == 0:
-                    old_training_step = 0
-                    t.reset()
-
-                if enable_depth_supervision:
-                    depth_supervision_lambda = max(1.0 - testbed.training_step / 2000, 0.2)
-                    testbed.nerf.training.depth_supervision_lambda = depth_supervision_lambda
-
-                now = time.monotonic()
-
-                step_info.append({
-                    "step": testbed.training_step,
-                    "loss": testbed.loss,
-                    "time": now,
-                    "depth_supervision_lambda": depth_supervision_lambda})
-
-                if now - tqdm_last_update > 0.1:
-                    t.update(testbed.training_step - old_training_step)
-                    t.set_postfix(loss=testbed.loss, depth=depth_supervision_lambda)
-                    old_training_step = testbed.training_step
-                    tqdm_last_update = now
-
-        end_time = time.monotonic()
-
-    if save_snapshot != "":
-        logger.info(f"Saving snapshot {save_snapshot}")
-        testbed.save_snapshot(save_snapshot, False)
-
-    if training_info != "":
-        logger.info(f"Save training info {training_info}")
-
-        info = {
-            "begin_time": begin_time,
-            "end_time": end_time,
-            "step_info": step_info,
-            "n_steps": n_steps,
-            "enable_depth_supervision": enable_depth_supervision
-        }
-
-        os.makedirs(os.path.dirname(training_info), exist_ok=True)
-        with open(training_info, "w", encoding="utf-8") as _f:
-            json.dump(info, _f, indent=4)
+    if out_training_info_json != "":
+        logger.info(f"Save training info {out_training_info_json}")
+        write_json(out_training_info_json, info, pretty=True)

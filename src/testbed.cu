@@ -348,6 +348,37 @@ Eigen::Vector3i Testbed::compute_and_save_png_slices(const char* filename, int r
 	return res3d;
 }
 
+Eigen::Vector3i Testbed::save_density(const char* filename, int res, BoundingBox aabb) {
+	Matrix3f render_aabb_to_local = Matrix3f::Identity();
+
+	if (aabb.is_empty()) {
+		aabb = m_testbed_mode == ETestbedMode::Nerf ? m_render_aabb : m_aabb;
+		render_aabb_to_local = m_render_aabb_to_local;
+	}
+
+	auto res3d = get_marching_cubes_res(res, aabb);
+	char fname[128];
+	snprintf(fname, sizeof(fname), ".density_grid_%dx%dx%d.bin", res3d.x(), res3d.y(), res3d.z());
+	GPUMemory<float> density = get_density_on_grid(res3d, aabb, render_aabb_to_local);
+	std::vector<float> density_cpu;
+	density_cpu.resize(density.size());
+	density.copy_to_host(density_cpu);
+
+	std::ofstream fout((std::string(filename) + fname).c_str(), std::ios::out | std::ios::binary);
+	const uint32_t size_x = res3d.x();
+	const uint32_t size_y = res3d.y();
+	const uint32_t size_z = res3d.z();
+	fout.write((char*)&size_x, sizeof(size_x));
+	fout.write((char*)&size_y, sizeof(size_y));
+	fout.write((char*)&size_z, sizeof(size_z));
+	fout.write((char*)&density_cpu[0], density_cpu.size() * sizeof(float));
+	fout.close();
+
+	return res3d;
+}
+
+
+
 inline float linear_to_db(float x) {
 	return -10.f*logf(x)/logf(10.f);
 }

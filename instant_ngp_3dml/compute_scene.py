@@ -8,9 +8,9 @@ from typing import get_args
 from typing import List
 from typing import Literal
 
-from instant_ngp_3dml.density import density
-from instant_ngp_3dml.rendering import render
-from instant_ngp_3dml.training import train
+from instant_ngp_3dml.density import main as density
+from instant_ngp_3dml.rendering import main as render
+from instant_ngp_3dml.training import main as train
 from instant_ngp_3dml.utils import DATA_DIR
 from instant_ngp_3dml.utils import NERF_CONFIG
 from instant_ngp_3dml.utils.io import write_json
@@ -23,7 +23,7 @@ DEFAULT_MAX_STEP = 20000
 ENABLE_S3_UPLOAD = False
 S3_URL_FORMAT = "s3://checkandvisit-3dml-dev/dataset_test/nerf/{scene_name}/"
 
-SceneName = Literal["lego", "barbershop", "0223-1010", "0223-1118", "0223-1120", "kitchen", "voiture"]
+SceneName = Literal["lego", "barbershop", "0223-1010", "0223-1118", "0223-1120", "kitchen_refined", "voiture"]
 
 
 def img_folder_to_video(folder: str, output_mp4: str, fps: int):
@@ -58,48 +58,54 @@ class SceneComputer:
     def __init__(self, scene_name: SceneName, config: str):
         assert scene_name in set(get_args(SceneName)), \
             f"Unknown test scene name, should be in {set(get_args(SceneName))}"
-        self.scene_dir = os.path.join(DATA_DIR, scene_name)
-        if not os.path.isdir(self.scene_dir):
-            logger.info("Download data from S3")
-            self.download_scene(S3_URL_FORMAT.format(scene_name=scene_name))
+        self.scene_folder = os.path.join(DATA_DIR, scene_name)
 
-        self.config_path = NERF_CONFIG.format(config=config)
+        logger.info("Download data from S3")
+        self.download_scene(S3_URL_FORMAT.format(scene_name=scene_name))
 
-        self.result_dir = os.path.join(self.scene_dir, config)
-        self.snapshot_dir = os.path.join(self.result_dir, "snapshot")
+        self.nerf_config_json = NERF_CONFIG.format(config=config)
 
-        os.makedirs(self.result_dir, exist_ok=True)
+        self.result_folder = os.path.join(self.scene_folder, config)
+        self.snapshot_folder = os.path.join(self.result_folder, "snapshot")
+
+        os.makedirs(self.result_folder, exist_ok=True)
 
         self.info: Dict[str, Any] = {}
 
     def download_scene(self, scene_url: str):
         """Download Scene"""
 
-        os.makedirs(self.scene_dir, exist_ok=True)
+        os.makedirs(self.scene_folder, exist_ok=True)
 
-        cmd = f"aws s3 sync {scene_url} {self.scene_dir}"
+        cmd = f"aws s3 sync {scene_url} {self.scene_folder}"
         os.system(cmd)
 
     @profile
     def train(self, n_step: int = 2000, max_step: int = DEFAULT_MAX_STEP):
         """Train Scene."""
 
-        training_json = os.path.join(self.scene_dir, "training.json")
-        os.makedirs(self.snapshot_dir, exist_ok=True)
+        transform_json = os.path.join(self.scene_folder, "training.json")
+        if not os.path.isfile(transform_json):
+            transform_json = os.path.join(self.scene_folder, "transform.json")
+
+        os.makedirs(self.snapshot_folder, exist_ok=True)
+        training_info_json = os.path.join(self.snapshot_folder, "training_info.json")
 
         start_time = process_time()
         for i in range(int(max_step/n_step)):
             logger.info(f"--- Run Step {i*n_step} to {(i + 1) * n_step} ---")
-            snapshot_path = get_snapshot_path(self.snapshot_dir, (i+1)*n_step)
-            if os.path.isfile(snapshot_path):
+            snapshot_msgpack = get_snapshot_path(self.snapshot_folder, (i+1)*n_step)
+            if os.path.isfile(snapshot_msgpack):
                 logger.info("Snapshot already exists, continue...")
                 continue
-            prev_snapshot_path = get_snapshot_path(self.snapshot_dir, i*n_step) if i > 0 else ""
-            train(scene=training_json,
-                  save_snapshot=snapshot_path,
-                  load_snapshot=prev_snapshot_path,
+            prev_snapshot_path = get_snapshot_path(self.snapshot_folder, i*n_step) if i > 0 else ""
+            train(nerf_transform_json=transform_json,
+                  out_snapshot_msgpack=snapshot_msgpack,
+                  snapshot_msgpack=prev_snapshot_path,
                   n_steps=(i+1) * n_step,
-                  network=self.config_path)
+                  nerf_network_configuration_json=self.nerf_config_json,
+                  out_training_info_json=training_info_json,
+                  enable_depth_supervision=True)
         end_time = process_time()
 
         self.info["n_step"] = n_step
@@ -107,59 +113,71 @@ class SceneComputer:
         self.info["training_time"] = end_time-start_time
 
     @profile
-    def render(self, render_mode: str = "color", camera_mode: str = "perspective", topview: bool = False,
-               step_idx: int = DEFAULT_MAX_STEP, display: bool = False, num_max_images: int = -1) -> str:
+    def render(self,
+               render_mode: str = "color",
+               camera_mode: str = "perspective",
+               topview: bool = False,
+               step_idx: int = DEFAULT_MAX_STEP,
+               display: bool = False, num_max_images: int = -1) -> str:
         """Render Scene."""
         # pylint:disable=too-many-arguments
-        transforms_json = os.path.join(self.scene_dir, "topview.json" if topview else "test.json")
+        transform_json = os.path.join(self.scene_folder, "topview.json" if topview else "test.json")
+        if not os.path.isfile(transform_json):
+            if topview:
+                return ""
+            transform_json = os.path.join(self.scene_folder, "transform.json")
 
         start_time = process_time()
-        render_folder = render(snapshot_msgpack=get_snapshot_path(self.snapshot_dir, step_idx),
-                               transforms_json=transforms_json,
-                               output_dir=self.result_dir,
-                               display=display,
-                               num_max_images=num_max_images,
-                               render_mode=render_mode,
-                               camera_mode=camera_mode)
+
+        render_folder = os.path.join(self.result_folder, f"{render_mode}_{camera_mode}")
+        render(snapshot_msgpack=get_snapshot_path(self.snapshot_folder, step_idx),
+               nerf_transform_json=transform_json,
+               out_rendering_folder=render_folder,
+               display=display,
+               num_max_images=num_max_images,
+               render_mode=render_mode,
+               camera_mode=camera_mode)
         end_time = process_time()
         self.info["render_time"] = end_time-start_time
 
         return render_folder
 
     @profile
-    def extract_density(self, nerf_config_file: str, step_idx: int = DEFAULT_MAX_STEP) -> str:
+    def extract_density(self,
+                        nerf_config_json: str,
+                        step_idx: int = DEFAULT_MAX_STEP) -> str:
         """Extract Density"""
 
-        output_density = os.path.join(self.scene_dir, "density")
+        out_density_folder = os.path.join(self.scene_folder, "density")
 
         start_time = process_time()
-        density(snapshot_msgpack=get_snapshot_path(self.snapshot_dir, step_idx),
-                nerf_config_file=nerf_config_file,
-                output_folder=output_density, resolution=512)
+        density(snapshot_msgpack=get_snapshot_path(self.snapshot_folder, step_idx),
+                nerf_config_json=nerf_config_json,
+                out_density_folder=out_density_folder,
+                vox_by_m=50)
         end_time = process_time()
         self.info["density_time"] = end_time-start_time
 
-        return output_density
+        return out_density_folder
 
     def save_info(self) -> str:
         """Save Info."""
 
-        info_json = os.path.join(self.result_dir, "info.json")
+        info_json = os.path.join(self.result_folder, "info.json")
         write_json(info_json, self.info)
         return info_json
 
     def upload_scene(self, scene_url: str):
         """Upload Scene."""
 
-        cmd = f"aws s3 sync {self.scene_dir} {scene_url}"
+        cmd = f"aws s3 sync {self.scene_folder} {scene_url}"
         os.system(cmd)
 
 
 def compute_scene(scene: SceneName,
                   config: str = "base",
-                  nerf_config_file: str = "",
                   display: bool = False,
-                  output_video_fps: int = 2,
+                  out_video_fps: int = 2,
                   skip_color: bool = False,
                   skip_depth: bool = False,
                   skip_topview: bool = False,
@@ -171,6 +189,11 @@ def compute_scene(scene: SceneName,
         scene: Scene Name on S3 bucket
         config: NeRF Network Configuration
         display: Display result during rendering
+        out_video_fps: Fps for output video
+        skip_color: Skip color rendering part
+        skip_depth: Skip depth rendering part
+        skip_topview: Skip topview rendering part
+        skip_density: Skip density extraction part
     """
     # pylint:disable=too-many-arguments
     logger.info(f"Run NeRF Scene on {scene}")
@@ -196,19 +219,20 @@ def compute_scene(scene: SceneName,
         tonemap_folder(depth_screenshot, color_depth)
 
     if not skip_density:
-        assert os.path.isfile(nerf_config_file)
-        logger.info("Render Density")
-        computer.extract_density(nerf_config_file)
+        nerf_config_file = os.path.join(computer.scene_folder, "config.json")
+        if os.path.isfile(nerf_config_file):
+            logger.info("Render Density")
+            computer.extract_density(nerf_config_file)
 
     logger.info("Convert to video")
-    color_video = os.path.join(computer.result_dir, "video.mp4")
-    depth_video = os.path.join(computer.result_dir, "depth.mp4")
+    color_video = os.path.join(computer.result_folder, "video.mp4")
+    depth_video = os.path.join(computer.result_folder, "depth.mp4")
     if not skip_color:
-        img_folder_to_video(screenshot, color_video, output_video_fps)
+        img_folder_to_video(screenshot, color_video, out_video_fps)
     if not skip_depth:
-        img_folder_to_video(color_depth, depth_video, output_video_fps)
+        img_folder_to_video(color_depth, depth_video, out_video_fps)
     if not skip_color and not skip_depth:
-        result_video = os.path.join(computer.result_dir, "result.mp4")
+        result_video = os.path.join(computer.result_folder, "result.mp4")
         merge_videos([color_video, depth_video], result_video)
 
     logger.info("Save json result")

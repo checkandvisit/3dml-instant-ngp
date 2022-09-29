@@ -403,6 +403,12 @@ PYBIND11_MODULE(pyngp, m) {
 			py::arg("flip_y_and_z_axes") = false,
 			"Compute & save a PNG file representing the 3D density or distance field from the current SDF or NeRF model. "
 		)
+        .def("save_density", &Testbed::save_density,
+			py::arg("filename"),
+			py::arg("resolution") = Eigen::Vector3i::Constant(256),
+			py::arg("aabb") = BoundingBox{},
+			"Compute & save density. "
+		)
 		.def("compute_and_save_marching_cubes_mesh", &Testbed::compute_and_save_marching_cubes_mesh,
 			py::arg("filename"),
 			py::arg("resolution") = Eigen::Vector3i::Constant(256),

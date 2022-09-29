@@ -17,3 +17,5 @@ else
     unimport $(find instant_ngp_3dml -name "*.py") --exclude $UNIMPORT_EXCLUDE && \
     reorder-python-imports $(find instant_ngp_3dml -name "*.py") --separate-relative --diff-only
 fi
+
+darglint $(find instant_ngp_3dml -name "*.py") -s google -z short
