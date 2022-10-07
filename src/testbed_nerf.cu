@@ -794,6 +794,8 @@ __global__ void composite_kernel_nerf(
 	uint32_t actual_n_steps = payload.n_steps;
 	uint32_t j = 0;
 
+	float max_weight = 0.0f;
+
 	for (; j < actual_n_steps; ++j) {
 		tcnn::vector_t<tcnn::network_precision_t, 4> local_network_output;
 		local_network_output[0] = network_output[i + j * n_elements + 0 * stride];
@@ -938,6 +940,11 @@ __global__ void composite_kernel_nerf(
 			rgb = Array3f::Constant(cam_fwd.dot(pos - origin) * depth_scale);
 		} else if (render_mode == ERenderMode::AO) {
 			rgb = Array3f::Constant(alpha);
+		} else if (render_mode == ERenderMode::Confidence) {
+			rgb = Array3f::Constant(0.0f);
+			if (max_weight < weight) {
+				max_weight = weight;
+			}
 		}
 
 		local_rgba.head<3>() += rgb * weight;
@@ -956,6 +963,10 @@ __global__ void composite_kernel_nerf(
 	if (j < n_steps) {
 		payload.alive = false;
 		payload.n_steps = j + current_step;
+	}
+
+	if (render_mode == ERenderMode::Confidence) {
+		local_rgba.head<3>() = Array3f::Constant(max_weight);
 	}
 
 	rgba[i] = local_rgba;
