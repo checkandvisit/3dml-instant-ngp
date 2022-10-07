@@ -2782,7 +2782,7 @@ void Testbed::render_frame(const Matrix<float, 3, 4>& camera_matrix0, const Matr
 	m_image.prev_pos = m_image.pos;
 
 	render_buffer.accumulate(m_exposure, m_stream.get());
-	render_buffer.tonemap(m_exposure, m_background_color, to_srgb ? EColorSpace::SRGB : EColorSpace::Linear, m_stream.get());
+	render_buffer.tonemap(m_exposure, m_background_color, to_srgb ? EColorSpace::SRGB : EColorSpace::Linear, m_stream.get(), m_max_depth);
 
 	if (m_testbed_mode == ETestbedMode::Nerf) {
 		// Overlay the ground truth image if requested
@@ -2801,7 +2801,8 @@ void Testbed::render_frame(const Matrix<float, 3, 4>& camera_matrix0, const Matr
 					m_fov_axis,
 					m_zoom,
 					Vector2f::Constant(0.5f),
-					m_stream.get()
+					m_stream.get(),
+					m_max_depth
 				);
 			}
 			else if(m_ground_truth_render_mode == EGroundTruthRenderMode::Depth && metadata.depth) {
