@@ -43,7 +43,18 @@ def __save_color(outname, image):
 
 
 def set_render_params(testbed: ngp.Testbed, render_mode: str, spp: int) -> int:
-    """Set Testbed with render params for render mode"""
+    """Set Testbed with render params for render mode
+
+        Args:
+            testbed: InstantNGP Manager
+            render_mode: The mode of rendering (cf ngp.RenderMode)
+            spp: The desired spp for rendering
+
+        Returns:
+            int: The spp optimized for the render_mode
+
+        Raises:
+            ValueError: Only RENDER_MODES is accepted."""
 
     if render_mode == "color":
         return spp
@@ -64,7 +75,7 @@ def set_render_params(testbed: ngp.Testbed, render_mode: str, spp: int) -> int:
         testbed.exposure = 1.0
         return 1
 
-    raise NotImplementedError
+    raise ValueError
 
 
 @profile

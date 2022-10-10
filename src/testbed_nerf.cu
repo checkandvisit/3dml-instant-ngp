@@ -941,6 +941,7 @@ __global__ void composite_kernel_nerf(
 		} else if (render_mode == ERenderMode::AO) {
 			rgb = Array3f::Constant(alpha);
 		} else if (render_mode == ERenderMode::Confidence) {
+			// The definition of confidence is still in progress
 			rgb = Array3f::Constant(0.0f);
 			if (max_weight < weight) {
 				max_weight = weight;
