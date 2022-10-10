@@ -257,4 +257,4 @@ RUN echo "${USER} ALL=(ALL) NOPASSWD: ALL" \
     chmod 0440 /etc/sudoers.d/${USER}
 
 # Final User
-USER ${USER}
+USER dock
