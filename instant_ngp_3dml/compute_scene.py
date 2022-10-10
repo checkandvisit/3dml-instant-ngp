@@ -214,6 +214,8 @@ def compute_scene(scene: SceneName,
     if not skip_depth:
         logger.info(f"Render Depth on {prefix_str}")
         depth_screenshot = computer.render("depth", display=display)
+        logger.info(f"Render Confidence on {prefix_str}")
+        _ = computer.render("confidence", display=display)
         logger.info("ToneMap DepthMap")
         color_depth = depth_screenshot+"_png"
         tonemap_folder(depth_screenshot, color_depth)

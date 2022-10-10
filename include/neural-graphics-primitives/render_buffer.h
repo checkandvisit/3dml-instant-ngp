@@ -202,7 +202,7 @@ public:
 
 	void accumulate(float exposure, cudaStream_t stream);
 
-	void tonemap(float exposure, const Eigen::Array4f& background_color, EColorSpace output_color_space, cudaStream_t stream);
+	void tonemap(float exposure, const Eigen::Array4f& background_color, EColorSpace output_color_space, cudaStream_t stream, float tonemap_threshold);
 
 	void overlay_image(
 		float alpha,
@@ -215,7 +215,8 @@ public:
 		int fov_axis,
 		float zoom,
 		const Eigen::Vector2f& screen_center,
-		cudaStream_t stream
+		cudaStream_t stream,
+		float tonemap_threshold
 	);
 
 	void overlay_depth(

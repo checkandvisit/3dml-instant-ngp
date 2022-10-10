@@ -15,14 +15,15 @@ from instant_ngp_3dml.utils.tonemapper import linear_to_srgb
 
 
 RENDER_MODES: Dict[str, ngp.RenderMode] = {"depth": ngp.RenderMode.Depth,
-                                           "color": ngp.RenderMode.Shade}
+                                           "color": ngp.RenderMode.Shade,
+                                           "confidence": ngp.RenderMode.Confidence}
 CAMERA_MODES: Dict[str, ngp.CameraMode] = {"perspective": ngp.CameraMode.Perspective,
                                            "orthographic": ngp.CameraMode.Orthographic,
                                            "environment": ngp.CameraMode.Environment}
 
 
 @profile
-def __save(outname, image):
+def __save_color(outname, image):
     image = np.copy(image)
     # Unmultiply alpha
     image[..., 0:3] = np.divide(
@@ -39,6 +40,42 @@ def __save(outname, image):
 
     os.makedirs(os.path.dirname(outname), exist_ok=True)
     imageio.imwrite(outname, image)
+
+
+def set_render_params(testbed: ngp.Testbed, render_mode: str, spp: int) -> int:
+    """Set Testbed with render params for render mode
+
+        Args:
+            testbed: InstantNGP Manager
+            render_mode: The mode of rendering (cf ngp.RenderMode)
+            spp: The desired spp for rendering
+
+        Returns:
+            int: The spp optimized for the render_mode
+
+        Raises:
+            ValueError: Only RENDER_MODES is accepted."""
+
+    if render_mode == "color":
+        return spp
+
+    if render_mode == "depth":
+        logger.info("Set depth rendering params")
+        testbed.tonemap_curve = ngp.TonemapCurve.Identity
+        testbed.color_space = ngp.ColorSpace.Linear
+        testbed.render_mode = ngp.RenderMode.Depth
+        testbed.exposure = -4.0
+        return 1
+
+    if render_mode == "confidence":
+        logger.info("Set confidence rendering params")
+        testbed.tonemap_curve = ngp.TonemapCurve.Identity
+        testbed.color_space = ngp.ColorSpace.Linear
+        testbed.render_mode = ngp.RenderMode.Confidence
+        testbed.exposure = 1.0
+        return 1
+
+    raise ValueError
 
 
 @profile
@@ -107,13 +144,7 @@ def main(snapshot_msgpack: str,
         f"Invalid render mode '{render_mode}'. Should be in {RENDER_MODES.keys()}"
     testbed.render_mode = RENDER_MODES[render_mode.lower()]
 
-    if render_mode == "depth":
-        logger.info("Set depth rendering params")
-        testbed.tonemap_curve = ngp.TonemapCurve.Identity
-        testbed.color_space = ngp.ColorSpace.Linear
-        testbed.render_mode = ngp.RenderMode.Depth
-        testbed.exposure = -4.0
-        spp = 1
+    spp = set_render_params(testbed, render_mode, spp)
 
     nb_frames = len(ref_transforms["frames"])
     if num_max_images > 0:
@@ -137,12 +168,14 @@ def main(snapshot_msgpack: str,
                 image[..., :3] *= 2**(-1*testbed.exposure)
 
             if render_mode == "color":
-                __save(outname, image)
+                __save_color(outname, image)
             elif render_mode == "depth":
                 # Force depth in numpy format
                 outname = os.path.splitext(outname)[0] + ".npy"
                 os.makedirs(os.path.dirname(outname), exist_ok=True)
                 np.save(outname, image[..., 0])
+            elif render_mode == "confidence":
+                __save_color(outname, image)
             else:
                 raise ValueError(f"Invalid render mode '{render_mode}'. Should be in {RENDER_MODES.keys()}")
 

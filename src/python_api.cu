@@ -241,6 +241,7 @@ PYBIND11_MODULE(pyngp, m) {
 		.value("Distortion", ERenderMode::Distortion)
 		.value("Cost", ERenderMode::Cost)
 		.value("Slice", ERenderMode::Slice)
+		.value("Confidence", ERenderMode::Confidence)
 		.export_values();
 
     py::enum_<ECameraMode>(m, "CameraMode")

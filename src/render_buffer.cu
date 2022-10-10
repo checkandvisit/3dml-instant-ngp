@@ -300,7 +300,7 @@ __device__ Array3f colormap_viridis(float x) {
 	return (c0+x*(c1+x*(c2+x*(c3+x*(c4+x*(c5+x*c6))))));
 }
 
-__device__ Array3f tonemap(Array3f x, ETonemapCurve curve) {
+__device__ Array3f tonemap(Array3f x, ETonemapCurve curve, float threshold) {
 	if (curve == ETonemapCurve::Identity) {
 		return x;
 	}
@@ -350,9 +350,7 @@ __device__ Array3f tonemap(Array3f x, ETonemapCurve curve) {
 		return x * (1.f / (Y + 1.0f));
 	} else {
 		// if (curve == ETonemapCurve::Turbo)
-
-		// TODO replace 8.0f by m_max_depth from testbed
-		return colormap_turbo(x.x()/8.0f);
+		return colormap_turbo(x.x()/threshold);
 	}
 
 	Array3f color_sq = x * x;
@@ -364,7 +362,7 @@ __device__ Array3f tonemap(Array3f x, ETonemapCurve curve) {
 	return tonemapped_color;
 }
 
-__device__ Array3f tonemap(Array3f col, const Array3f& exposure, ETonemapCurve tonemap_curve, EColorSpace color_space, EColorSpace output_color_space) {
+__device__ Array3f tonemap(Array3f col, const Array3f& exposure, ETonemapCurve tonemap_curve, EColorSpace color_space, EColorSpace output_color_space, float threshold) {
 	// Conversion to output by
 	// 1. converting to linear. (VisPosNeg is treated as linear red/green)
 	if (color_space == EColorSpace::SRGB) {
@@ -375,7 +373,7 @@ __device__ Array3f tonemap(Array3f col, const Array3f& exposure, ETonemapCurve t
 	col *= Array3f::Constant(2.0f).pow(exposure);
 
 	// 3. tonemapping in linear space according to the specified curve
-	col = tonemap(col, tonemap_curve);
+	col = tonemap(col, tonemap_curve, threshold);
 
 	// 4. converting to output color space.
 	if (output_color_space == EColorSpace::SRGB) {
@@ -399,7 +397,8 @@ __global__ void overlay_image_kernel(
 	int fov_axis,
 	float zoom,
 	Eigen::Vector2f screen_center,
-	cudaSurfaceObject_t surface
+	cudaSurfaceObject_t surface,
+	float tonemap_threshold
 ) {
 	uint32_t x = threadIdx.x + blockDim.x * blockIdx.x;
 	uint32_t y = threadIdx.y + blockDim.y * blockIdx.y;
@@ -449,7 +448,7 @@ __global__ void overlay_image_kernel(
 	color.head<3>() += background_color.head<3>() * weight;
 	color.w() += weight;
 
-	color.head<3>() = tonemap(color.head<3>(), exposure, tonemap_curve, color_space, output_color_space);
+	color.head<3>() = tonemap(color.head<3>(), exposure, tonemap_curve, color_space, output_color_space, tonemap_threshold);
 
 	Array4f prev_color;
 	surf2Dread((float4*)&prev_color, surface, x * sizeof(float4), y);
@@ -546,7 +545,7 @@ __global__ void overlay_false_color_kernel(Vector2i resolution, Vector2i trainin
 	surf2Dwrite(to_float4(color), surface, x * sizeof(float4), y);
 }
 
-__global__ void tonemap_kernel(Vector2i resolution, float exposure, Array4f background_color, Array4f* accumulate_buffer, EColorSpace color_space, EColorSpace output_color_space, ETonemapCurve tonemap_curve, bool clamp_output_color, cudaSurfaceObject_t surface) {
+__global__ void tonemap_kernel(Vector2i resolution, float exposure, Array4f background_color, Array4f* accumulate_buffer, EColorSpace color_space, EColorSpace output_color_space, ETonemapCurve tonemap_curve, bool clamp_output_color, cudaSurfaceObject_t surface, float tonemap_threshold) {
 	uint32_t x = threadIdx.x + blockDim.x * blockIdx.x;
 	uint32_t y = threadIdx.y + blockDim.y * blockIdx.y;
 
@@ -567,7 +566,7 @@ __global__ void tonemap_kernel(Vector2i resolution, float exposure, Array4f back
 	color.head<3>() += background_color.head<3>() * weight;
 	color.w() += weight;
 
-	color.head<3>() = tonemap(color.head<3>(), Array3f::Constant(exposure), tonemap_curve, color_space, output_color_space);
+	color.head<3>() = tonemap(color.head<3>(), Array3f::Constant(exposure), tonemap_curve, color_space, output_color_space, tonemap_threshold);
 	if (clamp_output_color) {
 		color = color.cwiseMax(0.0f).cwiseMin(1.0f);
 	}
@@ -634,7 +633,7 @@ void CudaRenderBuffer::accumulate(float exposure, cudaStream_t stream) {
 	++m_spp;
 }
 
-void CudaRenderBuffer::tonemap(float exposure, const Array4f& background_color, EColorSpace output_color_space, cudaStream_t stream) {
+void CudaRenderBuffer::tonemap(float exposure, const Array4f& background_color, EColorSpace output_color_space, cudaStream_t stream, float tonemap_threshold) {
 	assert(m_dlss || out_resolution() == in_resolution());
 
 	auto res = m_dlss ? in_resolution() : out_resolution();
@@ -649,7 +648,8 @@ void CudaRenderBuffer::tonemap(float exposure, const Array4f& background_color, 
 		output_color_space,
 		m_tonemap_curve,
 		m_dlss && output_color_space == EColorSpace::SRGB,
-		m_dlss ? m_dlss->frame() : surface()
+		m_dlss ? m_dlss->frame() : surface(),
+		tonemap_threshold
 	);
 
 	if (m_dlss) {
@@ -683,7 +683,8 @@ void CudaRenderBuffer::overlay_image(
 	int fov_axis,
 	float zoom,
 	const Eigen::Vector2f& screen_center,
-	cudaStream_t stream
+	cudaStream_t stream,
+	float tonemap_threshold
 ) {
 	auto res = out_resolution();
 	const dim3 threads = { 16, 8, 1 };
@@ -702,7 +703,8 @@ void CudaRenderBuffer::overlay_image(
 		fov_axis,
 		zoom,
 		screen_center,
-		surface()
+		surface(),
+		tonemap_threshold
 	);
 }
 
