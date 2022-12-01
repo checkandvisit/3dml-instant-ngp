@@ -33,6 +33,8 @@ def __train(testbed: ngp.Testbed, n_steps: int, enable_depth_supervision: bool) 
             if enable_depth_supervision:
                 depth_supervision_lambda = max(1.0 - testbed.training_step / 2000, 0.2)
                 testbed.nerf.training.depth_supervision_lambda = depth_supervision_lambda
+            else:
+                depth_supervision_lambda = 0.0
 
             now = time.monotonic()
 
