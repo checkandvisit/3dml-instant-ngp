@@ -4,7 +4,6 @@ import os
 from typing import Dict
 from typing import Final
 from typing import Tuple
-from typing import Type
 
 import imageio
 import numpy as np
@@ -12,14 +11,10 @@ import pyngp as ngp  # noqa
 from tqdm import tqdm
 from utils_3dml.file.extensions import FileExt
 from utils_3dml.monitoring.profiler import profile
-from utils_3dml.structure.nerf.nerf_frame import NerfFrame
-from utils_3dml.structure.nerf.nerf_frame import NerfHalfLatLongFrame
-from utils_3dml.structure.nerf.nerf_frame import NerfLatLongFrame
-from utils_3dml.structure.nerf.nerf_frame import NerfOpencvFrame
-from utils_3dml.structure.nerf.nerf_frame import NerfPerspectiveFrame
 from utils_3dml.structure.nerf.nerf_transforms import NerfTransforms
 from utils_3dml.utils.asserts import assert_in
 from utils_3dml.utils.asserts import assert_isfile
+from utils_3dml.utils.asserts import assert_len
 
 from instant_ngp_3dml import logger
 from instant_ngp_3dml.utils.tonemapper import linear_to_srgb
@@ -30,14 +25,6 @@ RENDER_MODES: Final[Dict[str, ngp.RenderMode]] = {
     "color": ngp.RenderMode.Shade,
     "confidence": ngp.RenderMode.Confidence
 }
-DISTORTION_MODES: Final[Dict[Type[NerfFrame], ngp.LensMode]] = {
-    NerfLatLongFrame: ngp.LensMode.LatLong,
-    NerfHalfLatLongFrame: ngp.LensMode.HalfLatLong,
-    NerfPerspectiveFrame: ngp.LensMode.Perspective,
-    NerfOpencvFrame: ngp.LensMode.OpenCV
-}
-# N.B. LatLong refers to the actual theta/phi parametrization of a spherical image,
-# while the Equirectangular mode dilates differently the Y axis
 
 
 @profile
@@ -119,12 +106,14 @@ def main(snapshot_msgpack: str,
     """
     assert_isfile(nerf_transform_json, ext=FileExt.JSON)
     logger.debug(f"Load rendering transforms from {nerf_transform_json}")
-    NerfTransforms.load(nerf_transform_json)  # Validate JSON Schema
+    nerf_transform = NerfTransforms.load(nerf_transform_json)  # Validate JSON Schema
 
     testbed, spp = get_testbed_and_spp(snapshot_msgpack, render_mode, spp)
 
+    # Use load_training_data to load each input camera and re-run them using set_camera_to_training_view
     testbed.load_training_data(nerf_transform_json)
 
+    assert_len(nerf_transform.frames, testbed.nerf.training.dataset.n_images)
     for trainview, filepath in tqdm(enumerate(testbed.nerf.training.dataset.paths), desc="Rendering", unit="frame",
                                     total=testbed.nerf.training.dataset.n_images):
         testbed.set_camera_to_training_view(trainview)
