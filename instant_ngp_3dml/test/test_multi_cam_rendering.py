@@ -8,7 +8,11 @@ from typing import Type
 import cv2
 import numpy as np
 import pyngp as ngp  # noqa
+from utils_3dml.camera_extrinsics.coordinate_system import CoordinateSystem
+from utils_3dml.camera_extrinsics.matrix.pose_matrix import PoseMatrix
+from utils_3dml.camera_extrinsics.matrix.translation_vector import TranslationVector
 from utils_3dml.camera_extrinsics.pose import Pose
+from utils_3dml.camera_intrinsics.colmap_intrinsics import focal_to_fov
 from utils_3dml.monitoring.profiler import profile
 from utils_3dml.structure.nerf.nerf_frame import NerfFrame
 from utils_3dml.structure.nerf.nerf_frame import NerfHalfLatLongFrame
@@ -33,6 +37,12 @@ DISTORTION_MODES: Final[Dict[Type[NerfFrame], ngp.LensMode]] = {
 # while the Equirectangular mode dilates differently the Y axis
 
 MULTI_CAM_TEST_DIR = os.path.join(TEST_DIR, "multi_camera")
+
+
+def _get_lens_params(frame: NerfFrame) -> np.ndarray:
+    if isinstance(frame, NerfOpencvFrame):
+        return np.array((frame.k1, frame.k2, frame.p1, frame.p2, 0.0, 0.0, 0.0))
+    return np.zeros((7,), dtype=float)
 
 
 @profile
@@ -101,17 +111,14 @@ def test_multi_cam_rendering_intrinsics():  # noqa: PLR0915
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
     testbed.load_training_data(nerf_transform_json)
 
-    # THEN
     frames_by_filepath: Dict[str, NerfFrame] = {f.file_path: f for f in nerf_transforms.frames}
     ordered_paths: List[str] = testbed.nerf.training.dataset.paths
     assert_same_keys(frames_by_filepath, ordered_paths)
     ordered_frames = [frames_by_filepath[filepath] for filepath in ordered_paths]
 
+    # THEN the loaded NeRF training dataset corresponds to the input NerfTransforms
     assert_len(nerf_transforms.frames, testbed.nerf.training.dataset.n_images)
     for trainview, (filepath, frame) in enumerate(zip(testbed.nerf.training.dataset.paths, ordered_frames)):
-        testbed.set_camera_to_training_view(trainview)
-        assert testbed.nerf.render_with_camera_distortion
-
         assert_eq(filepath, frame.file_path)
         assert_eq(tuple(testbed.nerf.training.dataset.metadata[trainview].resolution), (frame.w, frame.h))
         assert_np_close(np.array(testbed.nerf.training.dataset.metadata[trainview].focal_length),
@@ -120,8 +127,28 @@ def test_multi_cam_rendering_intrinsics():  # noqa: PLR0915
                         np.array((frame.cx/frame.w, frame.cy/frame.h)), eps=1e-5)
 
         assert_eq(testbed.nerf.training.dataset.metadata[trainview].lens.mode, DISTORTION_MODES[type(frame)])
-        if isinstance(frame, NerfOpencvFrame):
-            assert_np_close(np.array(testbed.nerf.training.dataset.metadata[trainview].lens.params),
-                            np.array((frame.k1, frame.k2, frame.p1, frame.p2, 0.0, 0.0, 0.0)), eps=1e-8)
-        else:
-            assert_np_close(np.array(testbed.nerf.training.dataset.metadata[trainview].lens.params), 0.0, eps=1e-8)
+        assert_np_close(np.array(testbed.nerf.training.dataset.metadata[trainview].lens.params),
+                        _get_lens_params(frame), eps=1e-8)
+
+    # THEN the intrinsics/extrinsics set by 'set_camera_to_training_view' correspond to the input NerfTransforms
+    for trainview, frame in enumerate(ordered_frames):
+        testbed.set_camera_to_training_view(trainview)
+
+        # Extrinsics
+        nerf_rot, nerf_t = PoseMatrix(np.array(frame.transform_matrix)[:3, :]).to_rt()
+        nerf_t = nerf_t*nerf_transforms.scale + TranslationVector(nerf_transforms.offset)
+        ngp_mat = Pose.from_rt(nerf_rot, nerf_t, CoordinateSystem.NERF).transform_matrix(CoordinateSystem.NGP)[:3, :]
+        assert_np_close(np.array(testbed.camera_matrix), ngp_mat, eps=1e-6)
+
+        # Lens
+        assert testbed.nerf.render_with_camera_distortion
+        assert_eq(testbed.nerf.render_lens.mode, DISTORTION_MODES[type(frame)])
+        assert_np_close(np.array(testbed.nerf.render_lens.params), _get_lens_params(frame), eps=1e-8)
+
+        # Intrinsics
+        assert_np_close(np.array(testbed.screen_center),
+                        np.array((1.0-frame.cx/frame.w, 1.0-frame.cy/frame.h)), eps=1e-5)
+        resolution_ref = frame.w if testbed.fov_axis == 0 else frame.h
+        gt_fov_x = np.rad2deg(focal_to_fov(frame.fl_x, resolution_ref))
+        gt_fov_y = np.rad2deg(focal_to_fov(frame.fl_y, resolution_ref))
+        assert_np_close(np.array(testbed.fov_xy), np.array((gt_fov_x, gt_fov_y)), eps=1e-4)
