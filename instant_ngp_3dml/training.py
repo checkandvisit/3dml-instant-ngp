@@ -95,6 +95,8 @@ def main(nerf_transform_json: str,
     testbed.shall_train = True
     testbed.nerf.render_with_camera_distortion = True
 
+    testbed.nerf.training.mask_supervision_strength = 30.0
+
     if not enable_depth_supervision:
         testbed.nerf.training.depth_supervision_lambda = 0.0
 
