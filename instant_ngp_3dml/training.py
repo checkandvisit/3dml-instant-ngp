@@ -61,7 +61,7 @@ def __train(testbed: ngp.Testbed, n_steps: int, enable_depth_supervision: bool) 
 
 
 @profile
-def main(nerf_transform_json: str,
+def main(nerf_transform_json: str,  # noqa: PLR0913
          nerf_network_configuration_json: str,
          out_snapshot_msgpack: str,
          out_training_info_json: str = "",
@@ -79,8 +79,12 @@ def main(nerf_transform_json: str,
         n_steps: Nb training iterations
         enable_depth_supervision: If specified, NeRF is train with Depth Supervision
 
+    Resources:
+        cpu: normal
+        ram: normal
+        gpu: intensive
+        network: none
     """
-    # pylint: disable=too-many-arguments,no-member
     assert_gt(n_steps, 0)
 
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
