@@ -73,7 +73,7 @@ def main(nerf_transform_json: str,  # noqa: PLR0913
 
     Args:
         nerf_transform_json: Input NeRF Transform Json
-        config_name: Input configuration for NeRF Network
+        config_name: Input configuration for NeRF Network. See CONFIG_FOLDER
         out_snapshot_msgpack: Output NeRF Weight
         out_training_info_json: Output Json with Training Information
         snapshot_msgpack: Optional Input NeRF Weight
