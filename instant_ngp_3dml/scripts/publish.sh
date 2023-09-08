@@ -3,9 +3,7 @@
 set -e
 
 # Default values
-DEPENDENCIES=""
-POTREE_VERSION=""
-CPU_SIZE=""
+VERSION=""
 
 # Function to display usage instructions
 usage() {
