@@ -12,6 +12,7 @@ from tqdm import tqdm
 from utils_3dml.file.extensions import FileExt
 from utils_3dml.monitoring.profiler import LogScopeTime
 from utils_3dml.monitoring.profiler import profile
+from utils_3dml.structure.nerf.nerf_dataset import NerfDatasetFormat
 from utils_3dml.structure.nerf.nerf_transforms import NerfTransforms
 from utils_3dml.utils.asserts import assert_in
 from utils_3dml.utils.asserts import assert_isfile
@@ -21,10 +22,10 @@ from instant_ngp_3dml import logger
 from instant_ngp_3dml.utils.tonemapper import linear_to_srgb
 from instant_ngp_3dml.utils.tonemapper import tonemap
 
-RENDER_MODES: Final[Dict[str, ngp.RenderMode]] = {
-    "image": ngp.RenderMode.Shade,
-    "depth": ngp.RenderMode.Depth,
-    "confidence": ngp.RenderMode.Confidence
+NGP_RENDER_MODES: Final[Dict[NerfDatasetFormat, ngp.RenderMode]] = {
+    NerfDatasetFormat.IMAGE: ngp.RenderMode.Shade,
+    NerfDatasetFormat.DEPTH: ngp.RenderMode.Depth,
+    # "confidence": ngp.RenderMode.Confidence
 }
 
 
@@ -48,7 +49,7 @@ def __save_color(outname, image):
     imageio.imwrite(outname, image)
 
 
-def get_testbed_and_spp(snapshot_msgpack: str, render_mode: str, spp: int) -> Tuple[ngp.Testbed, int]:
+def get_testbed_and_spp(snapshot_msgpack: str, render_mode: NerfDatasetFormat, spp: int) -> Tuple[ngp.Testbed, int]:
     """Init TestBed and Spp for Rendering."""
     testbed = ngp.Testbed(ngp.TestbedMode.Nerf)
 
@@ -62,25 +63,25 @@ def get_testbed_and_spp(snapshot_msgpack: str, render_mode: str, spp: int) -> Tu
     testbed.dynamic_res = False
     testbed.fixed_res_factor = 1
 
-    assert_in(render_mode.lower(), RENDER_MODES)
-    testbed.render_mode = RENDER_MODES[render_mode.lower()]
+    assert_in(render_mode, NGP_RENDER_MODES)
+    testbed.render_mode = NGP_RENDER_MODES[render_mode]
 
-    if render_mode == "color":
+    if render_mode == NerfDatasetFormat.IMAGE:
         pass
-    elif render_mode == "depth":
+    elif render_mode == NerfDatasetFormat.DEPTH:
         logger.info("Set depth rendering params")
         testbed.tonemap_curve = ngp.TonemapCurve.Identity
         testbed.color_space = ngp.ColorSpace.Linear
         testbed.render_mode = ngp.RenderMode.Depth
         spp = 1
-    elif render_mode == "confidence":
-        logger.info("Set confidence rendering params")
-        testbed.tonemap_curve = ngp.TonemapCurve.Identity
-        testbed.color_space = ngp.ColorSpace.Linear
-        testbed.render_mode = ngp.RenderMode.Confidence
-        spp = 1
+    # elif render_mode == "confidence":
+    #     logger.info("Set confidence rendering params")
+    #     testbed.tonemap_curve = ngp.TonemapCurve.Identity
+    #     testbed.color_space = ngp.ColorSpace.Linear
+    #     testbed.render_mode = ngp.RenderMode.Confidence
+    #     spp = 1
     else:
-        raise ValueError(f"Unhandled rendering mode: {render_mode}")
+        raise ValueError(f"Unhandled rendering mode: {render_mode.name}")
 
     return testbed, spp
 
@@ -89,8 +90,8 @@ def get_testbed_and_spp(snapshot_msgpack: str, render_mode: str, spp: int) -> Tu
 def main(snapshot_msgpack: str,
          nerf_transform_json: str,
          out_rendering_folder: str,
+         render_type: str,
          spp: int = 4,
-         render_type: str = "image",
          color_depth: bool = True):
     """Render NeRF Scene.
 
@@ -99,7 +100,7 @@ def main(snapshot_msgpack: str,
         nerf_transform_json: Input NeRF Transform Json
         out_rendering_folder: Output Folder with rendered images
         spp: Input number of samples per pixel
-        render_type: Input renderer method
+        render_type: Input renderer method (See utils_3dml.structure.nerf.nerf_dataset.NerfDatasetFormat)
         color_depth: Input tonemap the generated Depthmaps, if render_type=="depth"
 
     Raises:
@@ -115,7 +116,9 @@ def main(snapshot_msgpack: str,
     logger.debug(f"Load rendering transforms from {nerf_transform_json}")
     nerf_transform = NerfTransforms.load(nerf_transform_json)  # Validate JSON Schema
 
-    testbed, spp = get_testbed_and_spp(snapshot_msgpack, render_type, spp)
+    render_mode = NerfDatasetFormat[render_type.upper()]
+
+    testbed, spp = get_testbed_and_spp(snapshot_msgpack, render_mode, spp)
 
     # Use load_training_data to load each input camera and re-run them using set_camera_to_training_view
     testbed.load_training_data(nerf_transform_json)
@@ -131,9 +134,9 @@ def main(snapshot_msgpack: str,
             image = testbed.render(w, h, spp, True)
             outname = os.path.join(out_rendering_folder, os.path.basename(filepath))
 
-            if render_type == "color":
+            if render_mode == NerfDatasetFormat.IMAGE:
                 __save_color(outname, image)
-            elif render_type == "depth":
+            elif render_mode == NerfDatasetFormat.DEPTH:
                 # Force depth in numpy format
                 outname = os.path.splitext(outname)[0] + ".npy"
                 os.makedirs(os.path.dirname(outname), exist_ok=True)
@@ -144,7 +147,7 @@ def main(snapshot_msgpack: str,
                     outname = os.path.splitext(outname)[0] + ".png"
                     os.makedirs(os.path.dirname(outname), exist_ok=True)
                     imageio.imwrite(outname, tonemap(raw_depth))
-            elif render_type == "confidence":
-                __save_color(outname, image)
+            # elif render_type == "confidence":
+            #     __save_color(outname, image)
             else:
-                raise ValueError(f"Invalid render mode '{render_type}'. Should be in {RENDER_MODES.keys()}")
+                raise ValueError(f"Invalid render mode '{render_mode}'. Should be in {NGP_RENDER_MODES.keys()}")
