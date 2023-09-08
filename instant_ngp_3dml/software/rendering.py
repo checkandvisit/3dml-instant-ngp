@@ -22,8 +22,8 @@ from instant_ngp_3dml.utils.tonemapper import linear_to_srgb
 from instant_ngp_3dml.utils.tonemapper import tonemap
 
 RENDER_MODES: Final[Dict[str, ngp.RenderMode]] = {
+    "image": ngp.RenderMode.Shade,
     "depth": ngp.RenderMode.Depth,
-    "color": ngp.RenderMode.Shade,
     "confidence": ngp.RenderMode.Confidence
 }
 
@@ -90,7 +90,7 @@ def main(snapshot_msgpack: str,
          nerf_transform_json: str,
          out_rendering_folder: str,
          spp: int = 4,
-         render_type: str = "color",
+         render_type: str = "image",
          color_depth: bool = True):
     """Render NeRF Scene.
 
