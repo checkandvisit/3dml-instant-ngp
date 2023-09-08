@@ -5,6 +5,7 @@ import time
 import pyngp as ngp  # noqa
 from tqdm import tqdm
 from utils_3dml.file.json_utils import write_json
+from utils_3dml.monitoring.profiler import LogScopeTime
 from utils_3dml.monitoring.profiler import profile
 from utils_3dml.utils.asserts import assert_gt
 from utils_3dml.utils.dataclass import _asdict_inner
@@ -105,7 +106,8 @@ def main(nerf_transform_json: str,  # noqa: PLR0913
     if not enable_depth_supervision:
         testbed.nerf.training.depth_supervision_lambda = 0.0
 
-    info = __train(testbed, n_steps, enable_depth_supervision)
+    with LogScopeTime(f"NeRF Training ({n_steps} steps)"):
+        info = __train(testbed, n_steps, enable_depth_supervision)
 
     if out_snapshot_msgpack != "":
         logger.info(f"Saving snapshot {out_snapshot_msgpack}")

@@ -10,6 +10,7 @@ import numpy as np
 import pyngp as ngp  # noqa
 from tqdm import tqdm
 from utils_3dml.file.extensions import FileExt
+from utils_3dml.monitoring.profiler import LogScopeTime
 from utils_3dml.monitoring.profiler import profile
 from utils_3dml.structure.nerf.nerf_transforms import NerfTransforms
 from utils_3dml.utils.asserts import assert_in
@@ -119,30 +120,31 @@ def main(snapshot_msgpack: str,
     # Use load_training_data to load each input camera and re-run them using set_camera_to_training_view
     testbed.load_training_data(nerf_transform_json)
 
-    assert_len(nerf_transform.frames, testbed.nerf.training.dataset.n_images)
-    for trainview, filepath in tqdm(enumerate(testbed.nerf.training.dataset.paths), desc="Rendering", unit="frame",
-                                    total=testbed.nerf.training.dataset.n_images):
-        testbed.set_camera_to_training_view(trainview)
-        assert testbed.nerf.render_with_camera_distortion
-        w, h = tuple(testbed.nerf.training.dataset.metadata[trainview].resolution)
+    with LogScopeTime(f"NeRF {render_type.capitalize()} Rendering"):
+        assert_len(nerf_transform.frames, testbed.nerf.training.dataset.n_images)
+        for trainview, filepath in tqdm(enumerate(testbed.nerf.training.dataset.paths), desc="Rendering", unit="frame",
+                                        total=testbed.nerf.training.dataset.n_images):
+            testbed.set_camera_to_training_view(trainview)
+            assert testbed.nerf.render_with_camera_distortion
+            w, h = tuple(testbed.nerf.training.dataset.metadata[trainview].resolution)
 
-        image = testbed.render(w, h, spp, True)
-        outname = os.path.join(out_rendering_folder, os.path.basename(filepath))
+            image = testbed.render(w, h, spp, True)
+            outname = os.path.join(out_rendering_folder, os.path.basename(filepath))
 
-        if render_type == "color":
-            __save_color(outname, image)
-        elif render_type == "depth":
-            # Force depth in numpy format
-            outname = os.path.splitext(outname)[0] + ".npy"
-            os.makedirs(os.path.dirname(outname), exist_ok=True)
-            raw_depth = image[..., 0]
-            np.save(outname, raw_depth)
-
-            if color_depth:
-                outname = os.path.splitext(outname)[0] + ".png"
+            if render_type == "color":
+                __save_color(outname, image)
+            elif render_type == "depth":
+                # Force depth in numpy format
+                outname = os.path.splitext(outname)[0] + ".npy"
                 os.makedirs(os.path.dirname(outname), exist_ok=True)
-                imageio.imwrite(outname, tonemap(raw_depth))
-        elif render_type == "confidence":
-            __save_color(outname, image)
-        else:
-            raise ValueError(f"Invalid render mode '{render_type}'. Should be in {RENDER_MODES.keys()}")
+                raw_depth = image[..., 0]
+                np.save(outname, raw_depth)
+
+                if color_depth:
+                    outname = os.path.splitext(outname)[0] + ".png"
+                    os.makedirs(os.path.dirname(outname), exist_ok=True)
+                    imageio.imwrite(outname, tonemap(raw_depth))
+            elif render_type == "confidence":
+                __save_color(outname, image)
+            else:
+                raise ValueError(f"Invalid render mode '{render_type}'. Should be in {RENDER_MODES.keys()}")
