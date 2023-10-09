@@ -202,7 +202,7 @@ RUN export UTILS_3DML_VERSION=$(echo "$(cut -d'=' -f2 <<< $(grep UTILS_3DML_VERS
     git clone https://${GIT_ACCESS_TOKEN}@github.com/checkandvisit/3dml-utils.git && \
     cd 3dml-utils && git checkout ${UTILS_3DML_VERSION}
 RUN --mount=type=cache,target=/root/.cache/pip \
-    cd 3dml-utils && pip3 install -e .
+    cd 3dml-utils && pip3 install .
 
 
 #-------------------------------------------------------------
