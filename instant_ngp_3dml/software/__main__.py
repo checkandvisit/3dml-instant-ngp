@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 """NeRF Utils Software."""
-import sys
 from typing import Callable
 from typing import Dict
 
-import fire
+from utils_3dml.software import Cli
 
-from instant_ngp_3dml import logger
 from instant_ngp_3dml.software.rendering import main as render
 from instant_ngp_3dml.software.training import main as train
 
@@ -15,20 +13,5 @@ modules: Dict[str, Callable] = {
     "training": train
 }
 
-HELP = """Geometry
-positional arguments:
-  """+str(list(modules.keys()))+"""     Software name
-optional arguments:
-  -h, --help            show this help message and exit
-other:
-    software_arguments  the arguments of software
-"""
-
 if __name__ == "__main__":
-    argv = sys.argv
-
-    if len(argv) > 1 and argv[1] in modules:
-        fire.Fire(modules[argv[1]], command=argv[2:])
-    else:
-        logger.info(HELP)
-        sys.exit(1)
+    Cli("3DML Instant-NGP Software", modules)()
